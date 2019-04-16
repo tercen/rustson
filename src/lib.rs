@@ -3,12 +3,17 @@
 //extern crate test;
 
 extern crate bytes;
-extern crate indexmap;
+//extern crate indexmap;
+extern crate serde;
+extern crate serde_json;
 
 use std::io::Cursor;
+use std::collections::HashMap;
 
 use bytes::{Buf, BufMut, LittleEndian};
-use indexmap::IndexMap;
+//use indexmap::IndexMap;
+
+use serde::{Serialize, Deserialize};
 
 static VERSION: &'static str = "1.1.0";
 
@@ -36,7 +41,8 @@ const LIST_FLOAT64_TYPE: u8 = 111;
 
 const LIST_STRING_TYPE: u8 = 112;
 
-#[derive(Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(untagged)]
 pub enum Value {
     NULL,
     STR(String),
@@ -44,7 +50,7 @@ pub enum Value {
     F64(f64),
     BOOL(bool),
     LST(Vec<Value>),
-    MAP(IndexMap<String, Value>),
+    MAP(HashMap<String, Value>),
 
     LSTU8(Vec<u8>),
     LSTI8(Vec<i8>),
@@ -62,6 +68,21 @@ pub enum Value {
     LSTF64(Vec<f64>),
 
     LSTSTR(Vec<String>),
+}
+
+
+pub fn encode_json(value: &Value) -> Result<String, String> {
+    match serde_json::to_string(&value){
+        Ok(j)=>Ok(j),
+        Err(e)=>Err(format!("encode_json : failed with {}", e).to_string())
+    }
+}
+
+pub fn decode_json(v: &[u8]) -> Result<Value, String> {
+    match serde_json::from_slice(v){
+        Ok(j)=>Ok(j),
+        Err(e)=>Err(format!("decode_json : failed with {}", e).to_string())
+    }
 }
 
 pub fn encode(value: &Value) -> Result<Vec<u8>, String> {
@@ -130,7 +151,7 @@ fn add_object(value: &Value, buf: &mut Vec<u8>) -> Result<(), String> {
             add_len(buf, v.len())?;
             for (k, v) in v.iter() {
                 add_string(buf, k);
-                add_object(v, buf);
+                add_object(v, buf)?;
             }
         }
         Value::LSTU8(ref v) => {
@@ -253,7 +274,7 @@ fn read_object(cur: &mut Cursor<&[u8]>) -> Result<Value, String> {
         }
         MAP_TYPE => {
             let len = read_len(cur)?;
-            let mut map = IndexMap::with_capacity(len);
+            let mut map = HashMap::with_capacity(len);
             for _ in 0..len {
                 if let Value::STR(k) = read_object(cur)? {
                     map.insert(k, read_object(cur)?);
@@ -494,15 +515,28 @@ mod tests {
         vec.push(Value::LSTF64(vec![42.0]));
         vec.push(Value::LSTSTR(vec!["42".to_owned()]));
 
-        encode_decode(&Value::LST(vec))
+
+        let object = Value::LST(vec);
+
+
+        let j = encode_json(&object).unwrap();
+        println!("{}", j);
+
+        let data = r#"[null,true,42,42.0,"42.0",[42],[42],[42],[42],[42],[42],[42],[42],[42.0],[42.0],["42"]]"#;
+
+        let p = decode_json(data.to_string().as_bytes()).unwrap();
+
+        println!("{:#?}", p);
+
+        encode_decode(&object);
     }
 
     #[test]
     fn map() {
-        let mut map = IndexMap::new();
+        let mut map = HashMap::new();
         map.insert("i42".to_owned(), Value::I32(42));
 
-        let mut inner_map = IndexMap::new();
+        let mut inner_map = HashMap::new();
         inner_map.insert("u42".to_owned(), Value::LSTU8(vec![42]));
 
         map.insert("map".to_owned(), Value::MAP(inner_map));
