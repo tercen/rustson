@@ -1,17 +1,15 @@
-//#![feature(test)]
-
-//extern crate test;
-
+#[macro_use]
+extern crate serde_derive;
 extern crate bytes;
-//extern crate indexmap;
+
 extern crate serde;
+
 extern crate serde_json;
 
 use std::io::Cursor;
 use std::collections::HashMap;
 
 use bytes::{Buf, BufMut, LittleEndian};
-//use indexmap::IndexMap;
 
 use serde::{Serialize, Deserialize};
 

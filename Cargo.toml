@@ -6,4 +6,5 @@ authors = ["Alexandre Maurel <alexandre.maurel@gmail.com>"]
 [dependencies]
 bytes = "*"
 serde = { version = "1.0", features = ["derive"] }
+serde_derive="*"
 serde_json = "1.0"
