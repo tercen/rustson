@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate serde_derive;
 extern crate bytes;
 
@@ -9,9 +8,13 @@ extern crate serde_json;
 use std::io::Cursor;
 use std::collections::HashMap;
 
-use bytes::{Buf, BufMut, LittleEndian};
+use bytes::{Buf};
 
 use serde::{Serialize, Deserialize};
+
+mod ser;
+
+use ser::Serializer;
 
 static VERSION: &'static str = "1.1.0";
 
@@ -68,7 +71,6 @@ pub enum Value {
     LSTSTR(Vec<String>),
 }
 
-
 pub fn encode_json(value: &Value) -> Result<String, String> {
     match serde_json::to_string(&value){
         Ok(j)=>Ok(j),
@@ -84,13 +86,8 @@ pub fn decode_json(v: &[u8]) -> Result<Value, String> {
 }
 
 pub fn encode(value: &Value) -> Result<Vec<u8>, String> {
-    let mut buf = Vec::new();
-    add_string(&mut buf, VERSION);
-
-    match add_object(value, &mut buf) {
-        Ok(_) => Ok(buf),
-        Err(e) => Err(e),
-    }
+    let ser = Serializer::new();
+    ser.encode(value)
 }
 
 pub fn decode(mut cur: Cursor<&[u8]>) -> Result<Value, String> {
@@ -113,132 +110,6 @@ pub fn decode(mut cur: Cursor<&[u8]>) -> Result<Value, String> {
     read_object(&mut cur)
 }
 
-fn add_object(value: &Value, buf: &mut Vec<u8>) -> Result<(), String> {
-    match *value {
-        Value::NULL => {
-            buf.put_u8(NULL_TYPE);
-        }
-        Value::STR(ref v) => {
-            add_string(buf, v);
-        }
-        Value::I32(v) => {
-            buf.put_u8(INTEGER_TYPE);
-            buf.put_i32::<LittleEndian>(v);
-        }
-        Value::F64(v) => {
-            buf.put_u8(DOUBLE_TYPE);
-            buf.put_f64::<LittleEndian>(v);
-        }
-        Value::BOOL(v) => {
-            buf.put_u8(BOOL_TYPE);
-            if v {
-                buf.put_u8(1);
-            } else {
-                buf.put_u8(0);
-            }
-        }
-        Value::LST(ref v) => {
-            buf.put_u8(LIST_TYPE);
-            add_len(buf, v.len())?;
-            for object in v.iter() {
-                add_object(object, buf)?;
-            }
-        }
-        Value::MAP(ref v) => {
-            buf.put_u8(MAP_TYPE);
-            add_len(buf, v.len())?;
-            for (k, v) in v.iter() {
-                add_string(buf, k);
-                add_object(v, buf)?;
-            }
-        }
-        Value::LSTU8(ref v) => {
-            buf.put_u8(LIST_UINT8_TYPE);
-            add_len(buf, v.len())?;
-            for i in v.iter() {
-                buf.put_u8(*i);
-            }
-        }
-        Value::LSTI8(ref v) => {
-            buf.put_u8(LIST_INT8_TYPE);
-            add_len(buf, v.len())?;
-            for i in v.iter() {
-                buf.put_i8(*i);
-            }
-        }
-        Value::LSTU16(ref v) => {
-            buf.put_u8(LIST_UINT16_TYPE);
-            add_len(buf, v.len())?;
-            for i in v.iter() {
-                buf.put_u16::<LittleEndian>(*i);
-            }
-        }
-        Value::LSTI16(ref v) => {
-            buf.put_u8(LIST_INT16_TYPE);
-            add_len(buf, v.len())?;
-            for i in v.iter() {
-                buf.put_i16::<LittleEndian>(*i);
-            }
-        }
-        Value::LSTU32(ref v) => {
-            buf.put_u8(LIST_UINT32_TYPE);
-            add_len(buf, v.len())?;
-            for i in v.iter() {
-                buf.put_u32::<LittleEndian>(*i);
-            }
-        }
-        Value::LSTI32(ref v) => {
-            buf.put_u8(LIST_INT32_TYPE);
-            add_len(buf, v.len())?;
-            for i in v.iter() {
-                buf.put_i32::<LittleEndian>(*i);
-            }
-        }
-        Value::LSTU64(ref v) => {
-            buf.put_u8(LIST_UINT64_TYPE);
-            add_len(buf, v.len())?;
-            for i in v.iter() {
-                buf.put_u64::<LittleEndian>(*i);
-            }
-        }
-        Value::LSTI64(ref v) => {
-            buf.put_u8(LIST_INT64_TYPE);
-            add_len(buf, v.len())?;
-            for i in v.iter() {
-                buf.put_i64::<LittleEndian>(*i);
-            }
-        }
-        Value::LSTF32(ref v) => {
-            buf.put_u8(LIST_FLOAT32_TYPE);
-            add_len(buf, v.len())?;
-            for i in v.iter() {
-                buf.put_f32::<LittleEndian>(*i);
-            }
-        }
-        Value::LSTF64(ref v) => {
-            buf.put_u8(LIST_FLOAT64_TYPE);
-            add_len(buf, v.len())?;
-            for i in v.iter() {
-                buf.put_f64::<LittleEndian>(*i);
-            }
-        }
-        Value::LSTSTR(ref v) => {
-            buf.put_u8(LIST_STRING_TYPE);
-            let mut len_in_bytes = 0;
-            for i in v.iter() {
-                len_in_bytes += i.as_bytes().len() + 1;
-            }
-            add_len(buf, len_in_bytes)?;
-
-            for i in v.iter() {
-                add_cstring(buf, i);
-            }
-        }
-    }
-
-    Ok(())
-}
-
 fn read_object(cur: &mut Cursor<&[u8]>) -> Result<Value, String> {
     let itype = read_type(cur)?;
     match itype {
@@ -248,13 +119,13 @@ fn read_object(cur: &mut Cursor<&[u8]>) -> Result<Value, String> {
             if cur.remaining() < 4 {
                 return Err("wrong format".to_owned());
             }
-            Ok(Value::I32(cur.get_i32::<LittleEndian>()))
+            Ok(Value::I32(cur.get_i32_le()))
         }
         DOUBLE_TYPE => {
             if cur.remaining() < 8 {
                 return Err("wrong format".to_owned());
             }
-            Ok(Value::F64(cur.get_f64::<LittleEndian>()))
+            Ok(Value::F64(cur.get_f64_le()))
         }
         BOOL_TYPE => {
             if cur.remaining() < 1 {
@@ -311,7 +182,7 @@ fn read_object(cur: &mut Cursor<&[u8]>) -> Result<Value, String> {
             }
             let mut vec = Vec::with_capacity(len);
             for _ in 0..len {
-                vec.push(cur.get_u16::<LittleEndian>());
+                vec.push(cur.get_u16_le());
             }
             Ok(Value::LSTU16(vec))
         }
@@ -322,7 +193,7 @@ fn read_object(cur: &mut Cursor<&[u8]>) -> Result<Value, String> {
             }
             let mut vec = Vec::with_capacity(len);
             for _ in 0..len {
-                vec.push(cur.get_i16::<LittleEndian>());
+                vec.push(cur.get_i16_le());
             }
             Ok(Value::LSTI16(vec))
         }
@@ -334,7 +205,7 @@ fn read_object(cur: &mut Cursor<&[u8]>) -> Result<Value, String> {
             }
             let mut vec = Vec::with_capacity(len);
             for _ in 0..len {
-                vec.push(cur.get_u32::<LittleEndian>());
+                vec.push(cur.get_u32_le());
             }
             Ok(Value::LSTU32(vec))
         }
@@ -345,7 +216,7 @@ fn read_object(cur: &mut Cursor<&[u8]>) -> Result<Value, String> {
             }
             let mut vec = Vec::with_capacity(len);
             for _ in 0..len {
-                vec.push(cur.get_i32::<LittleEndian>());
+                vec.push(cur.get_i32_le());
             }
             Ok(Value::LSTI32(vec))
         }
@@ -356,7 +227,7 @@ fn read_object(cur: &mut Cursor<&[u8]>) -> Result<Value, String> {
             }
             let mut vec = Vec::with_capacity(len);
             for _ in 0..len {
-                vec.push(cur.get_i64::<LittleEndian>());
+                vec.push(cur.get_i64_le());
             }
             Ok(Value::LSTI64(vec))
         }
@@ -367,7 +238,7 @@ fn read_object(cur: &mut Cursor<&[u8]>) -> Result<Value, String> {
             }
             let mut vec = Vec::with_capacity(len);
             for _ in 0..len {
-                vec.push(cur.get_u64::<LittleEndian>());
+                vec.push(cur.get_u64_le());
             }
             Ok(Value::LSTU64(vec))
         }
@@ -378,7 +249,7 @@ fn read_object(cur: &mut Cursor<&[u8]>) -> Result<Value, String> {
             }
             let mut vec = Vec::with_capacity(len);
             for _ in 0..len {
-                vec.push(cur.get_f32::<LittleEndian>());
+                vec.push(cur.get_f32_le());
             }
             Ok(Value::LSTF32(vec))
         }
@@ -389,7 +260,7 @@ fn read_object(cur: &mut Cursor<&[u8]>) -> Result<Value, String> {
             }
             let mut vec = Vec::with_capacity(len);
             for _ in 0..len {
-                vec.push(cur.get_f64::<LittleEndian>());
+                vec.push(cur.get_f64_le());
             }
             Ok(Value::LSTF64(vec))
         }
@@ -428,16 +299,9 @@ fn read_len(cur: &mut Cursor<&[u8]>) -> Result<usize, String> {
     if cur.remaining() < 4 {
         return Err("wrong format".to_owned());
     }
-    Ok(cur.get_u32::<LittleEndian>() as usize)
+    Ok(cur.get_u32_le() as usize)
 }
 
-fn add_len(buf: &mut Vec<u8>, len: usize) -> Result<(), String> {
-    if len > (std::u32::MAX as usize) {
-        return Err("list too large".to_owned());
-    }
-    buf.put_u32::<LittleEndian>(len as u32);
-    Ok(())
-}
 
 fn read_string(cur: &mut Cursor<&[u8]>) -> Result<String, String> {
     let mut rem = cur.remaining();
@@ -459,21 +323,11 @@ fn read_string(cur: &mut Cursor<&[u8]>) -> Result<String, String> {
     }
 }
 
-fn add_string(buf: &mut Vec<u8>, value: &str) {
-    buf.put_u8(STRING_TYPE);
-    add_cstring(buf, value);
-}
-
-fn add_cstring(buf: &mut Vec<u8>, value: &str) {
-    buf.put(value);
-    buf.put_u8(0);
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs::File;
-    use std::io::prelude::*;
+//    use std::fs::File;
+//    use std::io::prelude::*;
 //    use test::Bencher;
 
     fn encode_decode(object: &Value) {
@@ -520,13 +374,13 @@ mod tests {
         let j = encode_json(&object).unwrap();
         println!("{}", j);
 
+        encode_decode(&object);
+
         let data = r#"[null,true,42,42.0,"42.0",[42],[42],[42],[42],[42],[42],[42],[42],[42.0],[42.0],["42"]]"#;
 
         let p = decode_json(data.to_string().as_bytes()).unwrap();
 
         println!("{:#?}", p);
-
-        encode_decode(&object);
     }
 
     #[test]
