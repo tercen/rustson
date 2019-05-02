@@ -3,6 +3,7 @@ extern crate bytes;
 use super::*;
 
 use bytes::{BufMut};
+use std::mem::size_of;
 
 pub trait Writer {
     fn add_u8(&mut self, value: u8);
@@ -49,8 +50,49 @@ impl<T> Writer for T where T: BufMut {
     fn add_f32(&mut self, value: f32) {
         self.put_f32_le(value);
     }
+}
 
+pub struct CountWriter {
+    size: usize,
+}
 
+impl CountWriter {
+    pub fn new() -> CountWriter {
+        CountWriter {size:0}
+    }
+}
+
+impl Writer for CountWriter {
+    fn add_u8(&mut self, value: u8) {
+        self.size += 1;
+    }
+    fn add_i8(&mut self, value: i8) {
+        self.size += 1;
+    }
+    fn add_u32(&mut self, value: u32) {
+        self.size += 4;
+    }
+    fn add_i32(&mut self, value: i32) {
+        self.size += 4;
+    }
+    fn add_f64(&mut self, value: f64) {
+        self.size += 8;
+    }
+    fn add_u16(&mut self, value: u16) {
+        self.size += 2;
+    }
+    fn add_i16(&mut self, value: i16) {
+        self.size += 2;
+    }
+    fn add_u64(&mut self, value: u64) {
+        self.size += 8;
+    }
+    fn add_i64(&mut self, value: i64) {
+        self.size += 8;
+    }
+    fn add_f32(&mut self, value: f32) {
+        self.size += 4;
+    }
 }
 
 pub struct Serializer {}
@@ -58,8 +100,20 @@ pub struct Serializer {}
 impl Serializer {
     pub fn new() -> Serializer {Serializer{}}
 
+    pub fn encoded_size(&self, value: &Value) -> Result<usize, String> {
+        let mut buf = CountWriter::new();
+        self.add_string(&mut buf, VERSION);
+
+        match self.add_object(value, &mut buf) {
+            Ok(_) => Ok(buf.size),
+            Err(e) => Err(e),
+        }
+    }
+
     pub fn encode(&self, value: &Value) -> Result<Vec<u8>, String> {
-        let mut buf = Vec::new();
+        let size = self.encoded_size(value)?;
+
+        let mut buf = Vec::with_capacity(size);
         self.add_string(&mut buf, VERSION);
 
         match self.add_object(value, &mut buf) {

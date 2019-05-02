@@ -383,6 +383,9 @@ mod tests {
         let p = decode_json(data.to_string().as_bytes()).unwrap();
 
         println!("{:#?}", p);
+
+        let ser = Serializer::new();
+        println!("p encoded_size {:#?}", ser.encoded_size(&p));
     }
 
     #[test]
