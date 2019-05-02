@@ -204,7 +204,7 @@ impl Serializer {
 
 
     fn add_len(&self, buf: &mut Writer, len: usize) -> Result<(), String> {
-        if len > (std::u32::MAX as usize) {
+        if len > MAX_LIST_LENGTH {
             return Err("list too large".to_owned());
         }
         buf.add_u32(len as u32);

@@ -16,31 +16,33 @@ mod ser;
 
 use ser::Serializer;
 
-static VERSION: &'static str = "1.1.0";
+pub static VERSION: &'static str = "1.1.0";
 
-const NULL_TYPE: u8 = 0;
-const STRING_TYPE: u8 = 1;
-const INTEGER_TYPE: u8 = 2;
-const DOUBLE_TYPE: u8 = 3;
-const BOOL_TYPE: u8 = 4;
+pub const NULL_TYPE: u8 = 0;
+pub const STRING_TYPE: u8 = 1;
+pub const INTEGER_TYPE: u8 = 2;
+pub const DOUBLE_TYPE: u8 = 3;
+pub const BOOL_TYPE: u8 = 4;
 
-const LIST_TYPE: u8 = 10;
-const MAP_TYPE: u8 = 11;
+pub const LIST_TYPE: u8 = 10;
+pub const MAP_TYPE: u8 = 11;
 
-const LIST_UINT8_TYPE: u8 = 100;
-const LIST_UINT16_TYPE: u8 = 101;
-const LIST_UINT32_TYPE: u8 = 102;
+pub const LIST_UINT8_TYPE: u8 = 100;
+pub const LIST_UINT16_TYPE: u8 = 101;
+pub const LIST_UINT32_TYPE: u8 = 102;
 
-const LIST_INT8_TYPE: u8 = 103;
-const LIST_INT16_TYPE: u8 = 104;
-const LIST_INT32_TYPE: u8 = 105;
-const LIST_INT64_TYPE: u8 = 106;
-const LIST_UINT64_TYPE: u8 = 107;
+pub const LIST_INT8_TYPE: u8 = 103;
+pub const LIST_INT16_TYPE: u8 = 104;
+pub const LIST_INT32_TYPE: u8 = 105;
+pub const LIST_INT64_TYPE: u8 = 106;
+pub const LIST_UINT64_TYPE: u8 = 107;
 
-const LIST_FLOAT32_TYPE: u8 = 110;
-const LIST_FLOAT64_TYPE: u8 = 111;
+pub const LIST_FLOAT32_TYPE: u8 = 110;
+pub const LIST_FLOAT64_TYPE: u8 = 111;
 
-const LIST_STRING_TYPE: u8 = 112;
+pub const LIST_STRING_TYPE: u8 = 112;
+
+pub const MAX_LIST_LENGTH: usize = std::u32::MAX as usize;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(untagged)]
