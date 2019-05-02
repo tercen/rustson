@@ -70,7 +70,7 @@ impl Serializer {
 
     pub fn write(&self, value: &Value, writer: &mut Writer) -> Result<(), String> {
         self.add_string(writer, VERSION);
-        match self.add_object(value, &mut buf) {
+        match self.add_object(value, writer) {
             Ok(_) => Ok(()),
             Err(e) => Err(e),
         }
