@@ -53,7 +53,7 @@ impl<T> Writer for T where T: BufMut {
 }
 
 pub struct CountWriter {
-    size: usize,
+    pub size: usize,
 }
 
 impl CountWriter {
