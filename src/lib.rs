@@ -12,7 +12,7 @@ use bytes::{Buf};
 
 use serde::{Serialize, Deserialize};
 
-mod ser;
+pub mod ser;
 
 use ser::Serializer;
 
