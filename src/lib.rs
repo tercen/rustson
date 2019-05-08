@@ -1,20 +1,65 @@
 extern crate serde_derive;
 extern crate bytes;
-
 extern crate serde;
-
 extern crate serde_json;
+extern crate futures;
+extern crate tokio;
+extern crate tokio_core;
+
+pub mod deser;
+pub mod ser;
+pub mod ser2;
+pub mod ser3;
+pub mod stream;
 
 use std::io::Cursor;
 use std::collections::HashMap;
 
-use bytes::{Buf};
-
 use serde::{Serialize, Deserialize};
 
-pub mod ser;
+use std::error;
+use std::fmt;
 
+use deser::Deserializer;
 use ser::Serializer;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TsonError {
+    description: String
+}
+
+impl TsonError {
+    pub fn new<T>(description: T) -> TsonError where T: Into<String>{
+        TsonError { description: description.into() }
+    }
+
+    pub fn other<T>(e: T ) -> TsonError where T: error::Error {
+        TsonError { description: e.description().to_owned() }
+    }
+}
+
+impl fmt::Display for TsonError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,"{}", &self.description)
+    }
+}
+
+// This is important for other errors to wrap this one.
+impl error::Error for TsonError {
+    fn description(&self) -> &str {
+        &self.description
+    }
+
+    fn cause(&self) -> Option<&error::Error> {
+        // Generic error, underlying cause isn't tracked.
+        None
+    }
+
+    fn source(&self) -> Option<&(error::Error + 'static)> { None }
+}
+
+type Result<T> = std::result::Result<T, TsonError>;
+
 
 pub static VERSION: &'static str = "1.1.0";
 
@@ -44,7 +89,7 @@ pub const LIST_STRING_TYPE: u8 = 112;
 
 pub const MAX_LIST_LENGTH: usize = std::u32::MAX as usize;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(untagged)]
 pub enum Value {
     NULL,
@@ -73,257 +118,27 @@ pub enum Value {
     LSTSTR(Vec<String>),
 }
 
-pub fn encode_json(value: &Value) -> Result<String, String> {
-    match serde_json::to_string(&value){
-        Ok(j)=>Ok(j),
-        Err(e)=>Err(format!("encode_json : failed with {}", e).to_string())
-    }
+
+
+pub fn encode_json(value: &Value) -> Result<String> {
+    serde_json::to_string(&value).map_err(|e| TsonError::new(format!("encode_json  : failed with {}", e)))
 }
 
-pub fn decode_json(v: &[u8]) -> Result<Value, String> {
-    match serde_json::from_slice(v){
-        Ok(j)=>Ok(j),
-        Err(e)=>Err(format!("decode_json : failed with {}", e).to_string())
-    }
+pub fn decode_json(v: &[u8]) -> Result<Value> {
+    serde_json::from_slice(v).map_err(|e|TsonError::new(format!("decode_json : failed with {}", e)) )
+
 }
 
-pub fn encode(value: &Value) -> Result<Vec<u8>, String> {
+pub fn encode(value: &Value) -> Result<Vec<u8>> {
     let ser = Serializer::new();
     ser.encode(value)
 }
 
-pub fn decode(mut cur: Cursor<&[u8]>) -> Result<Value, String> {
-    if cur.remaining() < 1 {
-        return Err("wrong format".to_owned());
-    }
-
-    let itype = read_type(&mut cur)?;
-
-    if itype != STRING_TYPE {
-        return Err("wrong format".to_owned());
-    }
-
-    let version = read_string(&mut cur)?;
-
-    if !version.eq(VERSION) {
-        return Err("wrong version".to_owned());
-    }
-
-    read_object(&mut cur)
+pub fn decode(mut cur: Cursor<&[u8]>) -> Result<Value> {
+    let deser = Deserializer::new();
+    deser.read(&mut cur)
 }
 
-fn read_object(cur: &mut Cursor<&[u8]>) -> Result<Value, String> {
-    let itype = read_type(cur)?;
-    match itype {
-        NULL_TYPE => Ok(Value::NULL),
-        STRING_TYPE => Ok(Value::STR(read_string(cur)?)),
-        INTEGER_TYPE => {
-            if cur.remaining() < 4 {
-                return Err("wrong format".to_owned());
-            }
-            Ok(Value::I32(cur.get_i32_le()))
-        }
-        DOUBLE_TYPE => {
-            if cur.remaining() < 8 {
-                return Err("wrong format".to_owned());
-            }
-            Ok(Value::F64(cur.get_f64_le()))
-        }
-        BOOL_TYPE => {
-            if cur.remaining() < 1 {
-                return Err("wrong format".to_owned());
-            }
-            Ok(Value::BOOL(cur.get_u8() > 0))
-        }
-        LIST_TYPE => {
-            let len = read_len(cur)?;
-            let mut vec = Vec::with_capacity(len);
-            for _ in 0..len {
-                vec.push(read_object(cur)?);
-            }
-            Ok(Value::LST(vec))
-        }
-        MAP_TYPE => {
-            let len = read_len(cur)?;
-            let mut map = HashMap::with_capacity(len);
-            for _ in 0..len {
-                if let Value::STR(k) = read_object(cur)? {
-                    map.insert(k, read_object(cur)?);
-                } else {
-                    return Err("wrong format".to_owned());
-                }
-            }
-            Ok(Value::MAP(map))
-        }
-        LIST_UINT8_TYPE => {
-            let len = read_len(cur)?;
-            if cur.remaining() < len {
-                return Err("wrong format".to_owned());
-            }
-            let mut vec = Vec::with_capacity(len);
-            for _ in 0..len {
-                vec.push(cur.get_u8());
-            }
-            Ok(Value::LSTU8(vec))
-        }
-        LIST_INT8_TYPE => {
-            let len = read_len(cur)?;
-            if cur.remaining() < len {
-                return Err("wrong format".to_owned());
-            }
-            let mut vec = Vec::with_capacity(len);
-            for _ in 0..len {
-                vec.push(cur.get_i8());
-            }
-            Ok(Value::LSTI8(vec))
-        }
-        LIST_UINT16_TYPE => {
-            let len = read_len(cur)?;
-            if cur.remaining() < (len * 2) {
-                return Err("wrong format".to_owned());
-            }
-            let mut vec = Vec::with_capacity(len);
-            for _ in 0..len {
-                vec.push(cur.get_u16_le());
-            }
-            Ok(Value::LSTU16(vec))
-        }
-        LIST_INT16_TYPE => {
-            let len = read_len(cur)?;
-            if cur.remaining() < (len * 2) {
-                return Err("wrong format".to_owned());
-            }
-            let mut vec = Vec::with_capacity(len);
-            for _ in 0..len {
-                vec.push(cur.get_i16_le());
-            }
-            Ok(Value::LSTI16(vec))
-        }
-
-        LIST_UINT32_TYPE => {
-            let len = read_len(cur)?;
-            if cur.remaining() < (len * 4) {
-                return Err("wrong format".to_owned());
-            }
-            let mut vec = Vec::with_capacity(len);
-            for _ in 0..len {
-                vec.push(cur.get_u32_le());
-            }
-            Ok(Value::LSTU32(vec))
-        }
-        LIST_INT32_TYPE => {
-            let len = read_len(cur)?;
-            if cur.remaining() < (len * 4) {
-                return Err("wrong format".to_owned());
-            }
-            let mut vec = Vec::with_capacity(len);
-            for _ in 0..len {
-                vec.push(cur.get_i32_le());
-            }
-            Ok(Value::LSTI32(vec))
-        }
-        LIST_INT64_TYPE => {
-            let len = read_len(cur)?;
-            if cur.remaining() < (len * 8) {
-                return Err("wrong format".to_owned());
-            }
-            let mut vec = Vec::with_capacity(len);
-            for _ in 0..len {
-                vec.push(cur.get_i64_le());
-            }
-            Ok(Value::LSTI64(vec))
-        }
-        LIST_UINT64_TYPE => {
-            let len = read_len(cur)?;
-            if cur.remaining() < (len * 8) {
-                return Err("wrong format".to_owned());
-            }
-            let mut vec = Vec::with_capacity(len);
-            for _ in 0..len {
-                vec.push(cur.get_u64_le());
-            }
-            Ok(Value::LSTU64(vec))
-        }
-        LIST_FLOAT32_TYPE => {
-            let len = read_len(cur)?;
-            if cur.remaining() < (len * 4) {
-                return Err("wrong format".to_owned());
-            }
-            let mut vec = Vec::with_capacity(len);
-            for _ in 0..len {
-                vec.push(cur.get_f32_le());
-            }
-            Ok(Value::LSTF32(vec))
-        }
-        LIST_FLOAT64_TYPE => {
-            let len = read_len(cur)?;
-            if cur.remaining() < (len * 8) {
-                return Err("wrong format".to_owned());
-            }
-            let mut vec = Vec::with_capacity(len);
-            for _ in 0..len {
-                vec.push(cur.get_f64_le());
-            }
-            Ok(Value::LSTF64(vec))
-        }
-        LIST_STRING_TYPE => {
-            let mut len_in_bytes = read_len(cur)?;
-
-            if cur.remaining() < len_in_bytes {
-                return Err("wrong format".to_owned());
-            }
-            let mut vec = Vec::new();
-            while len_in_bytes > 0 {
-                let v = read_string(cur)?;
-                len_in_bytes -= v.as_bytes().len() + 1;
-                vec.push(v);
-            }
-
-            if len_in_bytes > 0 {
-                return Err("wrong format".to_owned());
-            }
-
-            Ok(Value::LSTSTR(vec))
-        }
-
-        _ => Err("wrong format".to_owned()),
-    }
-}
-
-fn read_type(cur: &mut Cursor<&[u8]>) -> Result<u8, String> {
-    if cur.remaining() < 1 {
-        return Err("wrong format".to_owned());
-    }
-    Ok(cur.get_u8())
-}
-
-fn read_len(cur: &mut Cursor<&[u8]>) -> Result<usize, String> {
-    if cur.remaining() < 4 {
-        return Err("wrong format".to_owned());
-    }
-    Ok(cur.get_u32_le() as usize)
-}
-
-
-fn read_string(cur: &mut Cursor<&[u8]>) -> Result<String, String> {
-    let mut rem = cur.remaining();
-    let mut vec = Vec::new();
-    while rem > 0 {
-        let byte = cur.get_u8();
-        if byte == 0 {
-            rem = 0;
-        } else {
-            vec.push(byte);
-            rem -= 1;
-        }
-    }
-
-    if let Ok(value) = String::from_utf8(vec) {
-        return Ok(value);
-    } else {
-        return Err("bad string".to_owned());
-    }
-}
 
 #[cfg(test)]
 mod tests {
