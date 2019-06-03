@@ -9,8 +9,9 @@ extern crate tokio_core;
 pub mod deser;
 pub mod ser;
 pub mod ser2;
-pub mod ser3;
 pub mod stream;
+
+//pub mod ser3;
 
 use std::io::Cursor;
 use std::collections::HashMap;
