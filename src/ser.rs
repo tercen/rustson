@@ -141,12 +141,12 @@ impl Serializer {
         }
     }
 
-    pub fn write(&self, value: &Value, writer: &mut Writer) -> Result<()> {
+    pub fn write(&self, value: &Value, writer: &mut dyn Writer) -> Result<()> {
         self.add_string(writer, VERSION)?;
         self.add_object(value, writer)
     }
 
-    fn add_object(&self, value: &Value, buf: &mut Writer) -> Result<()> {
+    fn add_object(&self, value: &Value, buf: &mut dyn Writer) -> Result<()> {
         match *value {
             Value::NULL => {
                 buf.add_u8(NULL_TYPE)?;
@@ -273,19 +273,19 @@ impl Serializer {
     }
 
 
-    fn add_len(&self, buf: &mut Writer, len: usize) -> Result<()> {
+    fn add_len(&self, buf: &mut dyn Writer, len: usize) -> Result<()> {
         if len > MAX_LIST_LENGTH {
             return Err(TsonError::new("list too large"));
         }
         buf.add_u32(len as u32)
     }
 
-    fn add_string(&self, buf: &mut Writer, value: &str) -> Result<()> {
+    fn add_string(&self, buf: &mut dyn Writer, value: &str) -> Result<()> {
         buf.add_u8(STRING_TYPE)?;
         self.add_cstring(buf, value)
     }
 
-    fn add_cstring(&self, buf: &mut Writer, value: &str) -> Result<()> {
+    fn add_cstring(&self, buf: &mut dyn Writer, value: &str) -> Result<()> {
         for byte in value.as_bytes().iter() {
             buf.add_u8(*byte)?;
         }

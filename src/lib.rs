@@ -51,12 +51,12 @@ impl error::Error for TsonError {
         &self.description
     }
 
-    fn cause(&self) -> Option<&error::Error> {
+    fn cause(&self) -> Option<&dyn error::Error> {
         // Generic error, underlying cause isn't tracked.
         None
     }
 
-    fn source(&self) -> Option<&(error::Error + 'static)> { None }
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> { None }
 }
 
 type Result<T> = std::result::Result<T, TsonError>;

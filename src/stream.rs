@@ -1,4 +1,4 @@
-use super::*;
+//use super::*;
 use futures::{Stream, Poll, Async};
 use ser2::*;
 
@@ -7,9 +7,9 @@ struct SerializerStream<'v> {
 }
 
 impl<'v> SerializerStream<'v> {
-    pub fn new(max_buf_len: usize, value: &'v Value) -> SerializerStream<'v> {
-        SerializerStream { ser: Serializer2::new(max_buf_len, &value) }
-    }
+//    pub fn new(max_buf_len: usize, value: &'v Value) -> SerializerStream<'v> {
+//        SerializerStream { ser: Serializer2::new(max_buf_len, &value) }
+//    }
 }
 
 impl<'v> Stream for SerializerStream<'v> {

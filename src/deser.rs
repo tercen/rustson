@@ -93,7 +93,7 @@ pub struct Deserializer {}
 impl Deserializer {
     pub fn new() -> Deserializer { Deserializer {} }
 
-    pub fn read(&self, reader: &mut Reader) -> Result<Value> {
+    pub fn read(&self, reader: &mut dyn Reader) -> Result<Value> {
         let itype = self.read_type(reader)?;
 
         if itype != STRING_TYPE {
@@ -109,15 +109,15 @@ impl Deserializer {
         self.read_object(reader)
     }
 
-    fn read_type(&self, reader: &mut Reader) -> Result<u8> {
+    fn read_type(&self, reader: &mut dyn Reader) -> Result<u8> {
         reader.read_u8()
     }
 
-    fn read_len(&self, reader: &mut Reader) -> Result<usize> {
+    fn read_len(&self, reader: &mut dyn Reader) -> Result<usize> {
         Ok(reader.read_u32()? as usize)
     }
 
-    fn read_string(&self, reader: &mut Reader) -> Result<String> {
+    fn read_string(&self, reader: &mut dyn Reader) -> Result<String> {
         let mut done = false;
         let mut vec = Vec::new();
         while !done {
@@ -136,7 +136,7 @@ impl Deserializer {
         }
     }
 
-    fn read_object(&self, reader: &mut Reader) -> Result<Value> {
+    fn read_object(&self, reader: &mut dyn Reader) -> Result<Value> {
         let itype = self.read_type(reader)?;
         match itype {
             NULL_TYPE => Ok(Value::NULL),
