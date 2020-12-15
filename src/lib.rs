@@ -2,16 +2,9 @@ extern crate serde_derive;
 extern crate bytes;
 extern crate serde;
 extern crate serde_json;
-extern crate futures;
-extern crate tokio;
-//extern crate tokio_core;
 
 pub mod deser;
 pub mod ser;
-pub mod ser2;
-pub mod stream;
-
-//pub mod ser3;
 
 use std::io::Cursor;
 use std::collections::HashMap;
@@ -35,7 +28,7 @@ impl TsonError {
     }
 
     pub fn other<T>(e: T ) -> TsonError where T: error::Error {
-        TsonError { description: e.description().to_owned() }
+        TsonError { description: e.to_string().to_owned() }
     }
 }
 
@@ -59,7 +52,7 @@ impl error::Error for TsonError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> { None }
 }
 
-type Result<T> = std::result::Result<T, TsonError>;
+pub type Result<T> = std::result::Result<T, TsonError>;
 
 
 pub static VERSION: &'static str = "1.1.0";
@@ -127,7 +120,6 @@ pub fn encode_json(value: &Value) -> Result<String> {
 
 pub fn decode_json(v: &[u8]) -> Result<Value> {
     serde_json::from_slice(v).map_err(|e|TsonError::new(format!("decode_json : failed with {}", e)) )
-
 }
 
 pub fn encode(value: &Value) -> Result<Vec<u8>> {
