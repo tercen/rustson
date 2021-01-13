@@ -5,6 +5,7 @@ extern crate serde_json;
 
 pub mod deser;
 pub mod ser;
+pub mod spec;
 
 use std::io::Cursor;
 use std::collections::HashMap;
@@ -14,8 +15,15 @@ use serde::{Serialize, Deserialize};
 use std::error;
 use std::fmt;
 
-use deser::Deserializer;
+use deser::{Deserializer, Reader};
 use ser::Serializer;
+use std::convert::TryInto;
+
+use spec::*;
+
+pub static VERSION: &'static str = "1.1.0";
+
+pub type Result<T> = std::result::Result<T, TsonError>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TsonError {
@@ -52,36 +60,83 @@ impl error::Error for TsonError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> { None }
 }
 
-pub type Result<T> = std::result::Result<T, TsonError>;
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct StrVec {
+    pub bytes: Vec<u8>,
+}
 
+impl StrVec {
+    pub fn from_bytes(bytes: Vec<u8>)-> Self {
+        StrVec{bytes}
+    }
+    pub fn build_starts(&self) -> Result<Vec<usize>> {
+        let mut reader = Cursor::new(&self.bytes);
+        let mut len_in_bytes = self.bytes.len();
+        let mut vec = Vec::new();
 
-pub static VERSION: &'static str = "1.1.0";
+        let mut start = 0usize;
+        vec.push(start);
 
-pub const NULL_TYPE: u8 = 0;
-pub const STRING_TYPE: u8 = 1;
-pub const INTEGER_TYPE: u8 = 2;
-pub const DOUBLE_TYPE: u8 = 3;
-pub const BOOL_TYPE: u8 = 4;
+        while len_in_bytes > 0 {
+            let v = read_string(&mut reader)?;
+            let len = v.as_bytes().len();
 
-pub const LIST_TYPE: u8 = 10;
-pub const MAP_TYPE: u8 = 11;
+            start += len + 1;
+            vec.push(start);
 
-pub const LIST_UINT8_TYPE: u8 = 100;
-pub const LIST_UINT16_TYPE: u8 = 101;
-pub const LIST_UINT32_TYPE: u8 = 102;
+            len_in_bytes -= len + 1;
+        }
 
-pub const LIST_INT8_TYPE: u8 = 103;
-pub const LIST_INT16_TYPE: u8 = 104;
-pub const LIST_INT32_TYPE: u8 = 105;
-pub const LIST_INT64_TYPE: u8 = 106;
-pub const LIST_UINT64_TYPE: u8 = 107;
+        Ok(vec)
+    }
+}
 
-pub const LIST_FLOAT32_TYPE: u8 = 110;
-pub const LIST_FLOAT64_TYPE: u8 = 111;
+fn read_string( reader: &mut dyn Reader) -> Result<String> {
+    let mut done = false;
+    let mut vec = Vec::new();
+    while !done {
+        let byte = reader.read_u8()?;
+        if byte == 0 {
+            done = true;
+        } else {
+            vec.push(byte);
+        }
+    }
 
-pub const LIST_STRING_TYPE: u8 = 112;
+    if let Ok(value) = String::from_utf8(vec) {
+        Ok(value)
+    } else {
+        Err(TsonError::new("utf8 : bad string"))
+    }
+}
 
-pub const MAX_LIST_LENGTH: usize = std::u32::MAX as usize;
+impl TryInto<Vec<String>> for StrVec {
+    type Error = TsonError;
+
+    fn try_into(self) -> Result<Vec<String>> {
+        let mut reader = Cursor::new(&self.bytes);
+        let mut len_in_bytes = self.bytes.len();
+        let mut vec = Vec::new();
+        while len_in_bytes > 0 {
+            let v = read_string(&mut reader)?;
+            len_in_bytes -= v.as_bytes().len() + 1;
+            vec.push(v);
+        }
+        Ok(vec)
+    }
+}
+
+impl Into<StrVec> for Vec<String>  {
+    fn into(self) -> StrVec {
+        let len_in_bytes = self.iter().map(|e| e.as_bytes().len()+1).sum();
+        let mut bytes = Vec::with_capacity(len_in_bytes);
+        self.iter().for_each(|e| {
+            bytes.extend(e.as_bytes());
+            bytes.push(0);
+        });
+        StrVec{bytes}
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(untagged)]
@@ -109,10 +164,15 @@ pub enum Value {
     LSTF32(Vec<f32>),
     LSTF64(Vec<f64>),
 
-    LSTSTR(Vec<String>),
+    LSTSTR(StrVec),
 }
 
+impl Value {
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
+        encode(self)
+    }
 
+}
 
 pub fn encode_json(value: &Value) -> Result<String> {
     serde_json::to_string(&value).map_err(|e| TsonError::new(format!("encode_json  : failed with {}", e)))
@@ -129,6 +189,12 @@ pub fn encode(value: &Value) -> Result<Vec<u8>> {
 
 pub fn decode(mut cur: Cursor<&[u8]>) -> Result<Value> {
     let deser = Deserializer::new();
+    deser.read(&mut cur)
+}
+
+pub fn decode_bytes(  bytes: &[u8]) -> Result<Value> {
+    let deser = Deserializer::new();
+    let mut cur = Cursor::new(&bytes);
     deser.read(&mut cur)
 }
 
@@ -175,7 +241,7 @@ mod tests {
         vec.push(Value::LSTI64(vec![42]));
         vec.push(Value::LSTF32(vec![42.0]));
         vec.push(Value::LSTF64(vec![42.0]));
-        vec.push(Value::LSTSTR(vec!["42".to_owned()]));
+        vec.push(Value::LSTSTR(vec!["42".to_owned()].into()));
 
 
         let object = Value::LST(vec);

@@ -97,7 +97,7 @@ impl Deserializer {
         let itype = self.read_type(reader)?;
 
         if itype != STRING_TYPE {
-            return Err(TsonError::new("wrong format"));
+            return Err(TsonError::new("wrong format -- expect version as str"));
         }
 
         let version = self.read_string(reader)?;
@@ -165,7 +165,7 @@ impl Deserializer {
                     if let Value::STR(k) = self.read_object(reader)? {
                         map.insert(k, self.read_object(reader)?);
                     } else {
-                        return Err(TsonError::new("wrong format"));
+                        return Err(TsonError::new("wrong format -- MAP_TYPE -- expected STR"));
                     }
                 }
                 Ok(Value::MAP(map))
@@ -271,13 +271,13 @@ impl Deserializer {
                 }
 
                 if len_in_bytes > 0 {
-                    return Err(TsonError::new("wrong format"));
+                    return Err(TsonError::new("LIST_STRING_TYPE -- wrong format"));
                 }
 
-                Ok(Value::LSTSTR(vec))
+                Ok(Value::LSTSTR(vec.into()))
             }
 
-            _ => Err(TsonError::new("wrong format")),
+            _ => Err(TsonError::new("wrong format -- _")),
         }
     }
 }

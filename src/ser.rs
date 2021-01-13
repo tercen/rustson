@@ -257,14 +257,11 @@ impl Serializer {
             }
             Value::LSTSTR(ref v) => {
                 buf.add_u8(LIST_STRING_TYPE)?;
-                let mut len_in_bytes = 0;
-                for i in v.iter() {
-                    len_in_bytes += i.as_bytes().len() + 1;
-                }
+                let len_in_bytes = v.bytes.len();
                 self.add_len(buf, len_in_bytes)?;
 
-                for i in v.iter() {
-                    self.add_cstring(buf, i)?;
+                for i in v.bytes.iter() {
+                    buf.add_u8(*i)?;
                 }
             }
         }
