@@ -31,18 +31,18 @@ pub struct TsonError {
 }
 
 impl TsonError {
-    pub fn new<T>(description: T) -> TsonError where T: Into<String>{
+    pub fn new<T>(description: T) -> TsonError where T: Into<String> {
         TsonError { description: description.into() }
     }
 
-    pub fn other<T>(e: T ) -> TsonError where T: error::Error {
+    pub fn other<T>(e: T) -> TsonError where T: error::Error {
         TsonError { description: e.to_string().to_owned() }
     }
 }
 
 impl fmt::Display for TsonError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}", &self.description)
+        write!(f, "{}", &self.description)
     }
 }
 
@@ -66,8 +66,8 @@ pub struct StrVec {
 }
 
 impl StrVec {
-    pub fn from_bytes(bytes: Vec<u8>)-> Self {
-        StrVec{bytes}
+    pub fn from_bytes(bytes: Vec<u8>) -> Self {
+        StrVec { bytes }
     }
     pub fn build_starts(&self) -> Result<Vec<usize>> {
         let mut reader = Cursor::new(&self.bytes);
@@ -91,7 +91,7 @@ impl StrVec {
     }
 }
 
-fn read_string( reader: &mut dyn Reader) -> Result<String> {
+fn read_string(reader: &mut dyn Reader) -> Result<String> {
     let mut done = false;
     let mut vec = Vec::new();
     while !done {
@@ -126,15 +126,15 @@ impl TryInto<Vec<String>> for StrVec {
     }
 }
 
-impl Into<StrVec> for Vec<String>  {
+impl Into<StrVec> for Vec<String> {
     fn into(self) -> StrVec {
-        let len_in_bytes = self.iter().map(|e| e.as_bytes().len()+1).sum();
+        let len_in_bytes = self.iter().map(|e| e.as_bytes().len() + 1).sum();
         let mut bytes = Vec::with_capacity(len_in_bytes);
         self.iter().for_each(|e| {
             bytes.extend(e.as_bytes());
             bytes.push(0);
         });
-        StrVec{bytes}
+        StrVec { bytes }
     }
 }
 
@@ -172,6 +172,32 @@ impl Value {
         encode(self)
     }
 
+    pub fn to_str(&self) -> Result<&str> {
+        match *self {
+            Value::STR(ref v) => {
+                Ok(v.as_str())
+            }
+            _ => Err(TsonError::new("str expected"))
+        }
+    }
+
+    pub fn to_map(&self) -> Result<&HashMap<String, Value>> {
+        match *self {
+            Value::MAP(ref v) => {
+                Ok(v)
+            }
+            _ => Err(TsonError::new("str expected"))
+        }
+    }
+
+    pub fn to_list(&self) -> Result<&Vec<Value>> {
+        match *self {
+            Value::LST(ref v) => {
+                Ok(v)
+            }
+            _ => Err(TsonError::new("lst expected"))
+        }
+    }
 }
 
 pub fn encode_json(value: &Value) -> Result<String> {
@@ -179,7 +205,7 @@ pub fn encode_json(value: &Value) -> Result<String> {
 }
 
 pub fn decode_json(v: &[u8]) -> Result<Value> {
-    serde_json::from_slice(v).map_err(|e|TsonError::new(format!("decode_json : failed with {}", e)) )
+    serde_json::from_slice(v).map_err(|e| TsonError::new(format!("decode_json : failed with {}", e)))
 }
 
 pub fn encode(value: &Value) -> Result<Vec<u8>> {
@@ -192,7 +218,7 @@ pub fn decode(mut cur: Cursor<&[u8]>) -> Result<Value> {
     deser.read(&mut cur)
 }
 
-pub fn decode_bytes(  bytes: &[u8]) -> Result<Value> {
+pub fn decode_bytes(bytes: &[u8]) -> Result<Value> {
     let deser = Deserializer::new();
     let mut cur = Cursor::new(&bytes);
     deser.read(&mut cur)

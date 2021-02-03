@@ -63,7 +63,6 @@ impl<T> Writer for T where T: BufMut {
     }
 
     fn put_slice(&mut self, value: &[u8]) -> Result<()> {
-
         self.put_slice(value);
         Ok(())
     }
@@ -289,10 +288,10 @@ impl Serializer {
                 buf.add_u8(LIST_STRING_TYPE)?;
                 let len_in_bytes = v.bytes.len();
                 self.add_len(buf, len_in_bytes)?;
-
-                for i in v.bytes.iter() {
-                    buf.add_u8(*i)?;
-                }
+                buf.put_slice(&v.bytes[..])?;
+                // for i in v.bytes.iter() {
+                //     buf.add_u8(*i)?;
+                // }
             }
         }
 
