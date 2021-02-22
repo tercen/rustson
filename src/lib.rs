@@ -89,6 +89,18 @@ impl StrVec {
 
         Ok(vec)
     }
+
+    pub fn try_to_vec(&self) -> Result<Vec<String>> {
+        let mut reader = Cursor::new(&self.bytes);
+        let mut len_in_bytes = self.bytes.len();
+        let mut vec = Vec::new();
+        while len_in_bytes > 0 {
+            let v = read_string(&mut reader)?;
+            len_in_bytes -= v.as_bytes().len() + 1;
+            vec.push(v);
+        }
+        Ok(vec)
+    }
 }
 
 fn read_string(reader: &mut dyn Reader) -> Result<String> {
@@ -125,6 +137,7 @@ impl TryInto<Vec<String>> for StrVec {
         Ok(vec)
     }
 }
+
 
 impl Into<StrVec> for Vec<String> {
     fn into(self) -> StrVec {
