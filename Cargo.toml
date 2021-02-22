@@ -1,6 +1,6 @@
 [package]
 name = "rustson"
-version = "0.2.14"
+version = "0.2.15"
 authors = ["Alexandre Maurel <alexandre.maurel@gmail.com>"]
 
 [dependencies]
