@@ -7,7 +7,7 @@ pub mod deser;
 pub mod ser;
 pub mod spec;
 
-use std::io::Cursor;
+use std::io::{Cursor, Error};
 use std::collections::HashMap;
 
 use serde::{Serialize, Deserialize};
@@ -37,6 +37,12 @@ impl TsonError {
 
     pub fn other<T>(e: T) -> TsonError where T: error::Error {
         TsonError { description: e.to_string().to_owned() }
+    }
+}
+
+impl From<std::io::Error> for TsonError {
+    fn from(value: Error) -> Self {
+        TsonError::new(value.to_string())
     }
 }
 
@@ -270,6 +276,7 @@ mod tests {
         vec.push(Value::I32(42));
         vec.push(Value::F64(42.0));
         vec.push(Value::STR("42.0".to_owned()));
+        vec.push(Value::STR("".to_owned()));
         vec.push(Value::LSTU8(vec![42]));
         vec.push(Value::LSTI8(vec![42]));
         vec.push(Value::LSTU16(vec![42]));
@@ -295,10 +302,20 @@ mod tests {
 
         let p = decode_json(data.to_string().as_bytes()).unwrap();
 
-        println!("{:#?}", p);
+        // println!("{:#?}", p);
 
         let ser = Serializer::new();
-        println!("p encoded_size {:#?}", ser.encoded_size(&p));
+        // println!("p encoded_size {:#?}", ser.encoded_size(&p));
+    }
+
+    #[test]
+    fn empty_string() {
+        let mut vec = Vec::new();
+        vec.push(Value::STR("".to_owned()));
+        let object = Value::LST(vec);
+        let bytes = encode(&object).unwrap();
+        println!("{:#?}", bytes);
+        encode_decode(&Value::STR("".to_owned()));
     }
 
     #[test]
