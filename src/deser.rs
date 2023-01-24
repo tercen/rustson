@@ -197,8 +197,6 @@ impl<T> Reader for T where T: Read {
         }
 
         if let Ok(value) = String::from_utf8(vec) {
-            println!("Reader -- read_string -- {}", &value);
-
             Ok(value)
         } else {
             Err(TsonError::new("bad string"))
