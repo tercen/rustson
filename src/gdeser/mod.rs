@@ -4,28 +4,28 @@ use ::{STRING_TYPE, VERSION};
 use ::{LIST_TYPE, Value};
 use Deserializer;
 
-struct TsonGDeserializer {
+pub struct TsonGDeserializer {
     reader: Box<dyn Reader>
 }
 
-struct TsonMapDeser<'a> {
+pub struct TsonMapDeser<'a> {
     deser: &'a mut TsonGDeserializer,
     len: usize,
     current: usize,
 }
 
-struct TsonMapEntryDeser<'a> {
+pub struct TsonMapEntryDeser<'a> {
     deser: &'a mut TsonGDeserializer,
     key: String,
 }
 
-struct TsonListDeser<'a> {
+pub struct TsonListDeser<'a> {
     deser: &'a mut TsonGDeserializer,
     len: usize,
     current: usize,
 }
 
-struct TsonTypedListDeser<'a> {
+pub struct TsonTypedListDeser<'a> {
     deser: &'a mut TsonGDeserializer,
 }
 
