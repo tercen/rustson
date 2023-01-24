@@ -2,6 +2,7 @@ extern crate serde_derive;
 extern crate bytes;
 extern crate serde;
 extern crate serde_json;
+extern crate byteorder;
 
 pub mod deser;
 pub mod ser;

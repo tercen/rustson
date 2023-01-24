@@ -1,15 +1,11 @@
-extern crate bytes;
-
 use std::io::Read;
 use std::ptr::slice_from_raw_parts_mut;
 use std::slice;
-
-use bytes::{Buf, ByteOrder, LittleEndian};
+use byteorder::{ByteOrder, LittleEndian};
 
 use super::*;
 
 pub trait Reader {
-    //    fn content_length(&self) -> Result<Option<usize>> {None}
     fn read_all(&mut self, buf: &mut Vec<u8>) -> TsonResult<()>;
     fn read_u8(&mut self) -> TsonResult<u8>;
     fn read_i8(&mut self) -> TsonResult<i8>;
@@ -36,95 +32,6 @@ pub trait Reader {
     fn read_string(&mut self) -> TsonResult<String>;
 }
 
-// impl Reader for Box<dyn Reader> {
-//     fn read_all(&mut self, buf: &mut Vec<u8>) -> TsonResult<()> {
-//         self.read_all(buf)
-//     }
-//
-//     fn read_u8(&mut self) -> TsonResult<u8> {
-//         self.read_u8()
-//     }
-//
-//     fn read_i8(&mut self) -> TsonResult<i8> {
-//         todo!()
-//     }
-//
-//     fn read_u16(&mut self) -> TsonResult<u16> {
-//         todo!()
-//     }
-//
-//     fn read_i16(&mut self) -> TsonResult<i16> {
-//         todo!()
-//     }
-//
-//     fn read_u32(&mut self) -> TsonResult<u32> {
-//         todo!()
-//     }
-//
-//     fn read_i32(&mut self) -> TsonResult<i32> {
-//         todo!()
-//     }
-//
-//     fn read_u64(&mut self) -> TsonResult<u64> {
-//         todo!()
-//     }
-//
-//     fn read_i64(&mut self) -> TsonResult<i64> {
-//         todo!()
-//     }
-//
-//     fn read_f32(&mut self) -> TsonResult<f32> {
-//         todo!()
-//     }
-//
-//     fn read_f64(&mut self) -> TsonResult<f64> {
-//         todo!()
-//     }
-//
-//     fn read_u8_into(&mut self, dest: &mut [u8]) -> TsonResult<()> {
-//         todo!()
-//     }
-//
-//     fn read_i8_into(&mut self, dest: &mut [i8]) -> TsonResult<()> {
-//         todo!()
-//     }
-//
-//     fn read_u16_into(&mut self, dest: &mut [u16]) -> TsonResult<()> {
-//         todo!()
-//     }
-//
-//     fn read_i16_into(&mut self, dest: &mut [i16]) -> TsonResult<()> {
-//         todo!()
-//     }
-//
-//     fn read_u32_into(&mut self, dest: &mut [u32]) -> TsonResult<()> {
-//         todo!()
-//     }
-//
-//     fn read_i32_into(&mut self, dest: &mut [i32]) -> TsonResult<()> {
-//         todo!()
-//     }
-//
-//     fn read_u64_into(&mut self, dest: &mut [u64]) -> TsonResult<()> {
-//         todo!()
-//     }
-//
-//     fn read_i64_into(&mut self, dest: &mut [i64]) -> TsonResult<()> {
-//         todo!()
-//     }
-//
-//     fn read_f32_into(&mut self, dest: &mut [f32]) -> TsonResult<()> {
-//         todo!()
-//     }
-//
-//     fn read_f64_into(&mut self, dest: &mut [f64]) -> TsonResult<()> {
-//         todo!()
-//     }
-//
-//     fn read_string(&mut self) -> TsonResult<String> {
-//         todo!()
-//     }
-// }
 
 impl<T> Reader for T where T: Read {
     fn read_all(&mut self, buf: &mut Vec<u8>) -> TsonResult<()> {
@@ -150,6 +57,7 @@ impl<T> Reader for T where T: Read {
     fn read_u16(&mut self) -> TsonResult<u16> {
         let mut bytes = [0; 2];
         self.read_exact(&mut bytes)?;
+
         Ok(LittleEndian::read_u16(&bytes))
     }
 
