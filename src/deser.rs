@@ -1,40 +1,133 @@
 extern crate bytes;
 
 use std::io::Read;
+use std::ptr::slice_from_raw_parts_mut;
+use std::slice;
+
+use bytes::{Buf, ByteOrder, LittleEndian};
+
 use super::*;
 
-use bytes::{Buf, LittleEndian, ByteOrder};
-
 pub trait Reader {
-//    fn content_length(&self) -> Result<Option<usize>> {None}
-    fn read_all(&mut self, buf: &mut Vec<u8>) -> Result<()>;
-    fn read_u8(&mut self) -> Result<u8>;
-    fn read_i8(&mut self) -> Result<i8>;
-    fn read_u16(&mut self) -> Result<u16>;
-    fn read_i16(&mut self) -> Result<i16>;
-    fn read_u32(&mut self) -> Result<u32>;
-    fn read_i32(&mut self) -> Result<i32>;
-    fn read_u64(&mut self) -> Result<u64>;
-    fn read_i64(&mut self) -> Result<i64>;
-    fn read_f32(&mut self) -> Result<f32>;
-    fn read_f64(&mut self) -> Result<f64>;
+    //    fn content_length(&self) -> Result<Option<usize>> {None}
+    fn read_all(&mut self, buf: &mut Vec<u8>) -> TsonResult<()>;
+    fn read_u8(&mut self) -> TsonResult<u8>;
+    fn read_i8(&mut self) -> TsonResult<i8>;
+    fn read_u16(&mut self) -> TsonResult<u16>;
+    fn read_i16(&mut self) -> TsonResult<i16>;
+    fn read_u32(&mut self) -> TsonResult<u32>;
+    fn read_i32(&mut self) -> TsonResult<i32>;
+    fn read_u64(&mut self) -> TsonResult<u64>;
+    fn read_i64(&mut self) -> TsonResult<i64>;
+    fn read_f32(&mut self) -> TsonResult<f32>;
+    fn read_f64(&mut self) -> TsonResult<f64>;
 
-    fn read_u8_into(&mut self, dest: &mut [u8]) -> Result<()>;
-    fn read_i8_into(&mut self, dest: &mut [i8]) -> Result<()>;
-    fn read_u16_into(&mut self, dest: &mut [u16]) -> Result<()>;
-    fn read_i16_into(&mut self, dest: &mut [i16]) -> Result<()>;
-    fn read_u32_into(&mut self, dest: &mut [u32]) -> Result<()>;
-    fn read_i32_into(&mut self, dest: &mut [i32]) -> Result<()>;
-    fn read_u64_into(&mut self, dest: &mut [u64]) -> Result<()>;
-    fn read_i64_into(&mut self, dest: &mut [i64]) -> Result<()>;
-    fn read_f32_into(&mut self, dest: &mut [f32]) -> Result<()>;
-    fn read_f64_into(&mut self, dest: &mut [f64]) -> Result<()>;
+    fn read_u8_into(&mut self, dest: &mut [u8]) -> TsonResult<()>;
+    fn read_i8_into(&mut self, dest: &mut [i8]) -> TsonResult<()>;
+    fn read_u16_into(&mut self, dest: &mut [u16]) -> TsonResult<()>;
+    fn read_i16_into(&mut self, dest: &mut [i16]) -> TsonResult<()>;
+    fn read_u32_into(&mut self, dest: &mut [u32]) -> TsonResult<()>;
+    fn read_i32_into(&mut self, dest: &mut [i32]) -> TsonResult<()>;
+    fn read_u64_into(&mut self, dest: &mut [u64]) -> TsonResult<()>;
+    fn read_i64_into(&mut self, dest: &mut [i64]) -> TsonResult<()>;
+    fn read_f32_into(&mut self, dest: &mut [f32]) -> TsonResult<()>;
+    fn read_f64_into(&mut self, dest: &mut [f64]) -> TsonResult<()>;
 
-    fn read_string(&mut self) -> Result<String>;
+    fn read_string(&mut self) -> TsonResult<String>;
 }
 
+// impl Reader for Box<dyn Reader> {
+//     fn read_all(&mut self, buf: &mut Vec<u8>) -> TsonResult<()> {
+//         self.read_all(buf)
+//     }
+//
+//     fn read_u8(&mut self) -> TsonResult<u8> {
+//         self.read_u8()
+//     }
+//
+//     fn read_i8(&mut self) -> TsonResult<i8> {
+//         todo!()
+//     }
+//
+//     fn read_u16(&mut self) -> TsonResult<u16> {
+//         todo!()
+//     }
+//
+//     fn read_i16(&mut self) -> TsonResult<i16> {
+//         todo!()
+//     }
+//
+//     fn read_u32(&mut self) -> TsonResult<u32> {
+//         todo!()
+//     }
+//
+//     fn read_i32(&mut self) -> TsonResult<i32> {
+//         todo!()
+//     }
+//
+//     fn read_u64(&mut self) -> TsonResult<u64> {
+//         todo!()
+//     }
+//
+//     fn read_i64(&mut self) -> TsonResult<i64> {
+//         todo!()
+//     }
+//
+//     fn read_f32(&mut self) -> TsonResult<f32> {
+//         todo!()
+//     }
+//
+//     fn read_f64(&mut self) -> TsonResult<f64> {
+//         todo!()
+//     }
+//
+//     fn read_u8_into(&mut self, dest: &mut [u8]) -> TsonResult<()> {
+//         todo!()
+//     }
+//
+//     fn read_i8_into(&mut self, dest: &mut [i8]) -> TsonResult<()> {
+//         todo!()
+//     }
+//
+//     fn read_u16_into(&mut self, dest: &mut [u16]) -> TsonResult<()> {
+//         todo!()
+//     }
+//
+//     fn read_i16_into(&mut self, dest: &mut [i16]) -> TsonResult<()> {
+//         todo!()
+//     }
+//
+//     fn read_u32_into(&mut self, dest: &mut [u32]) -> TsonResult<()> {
+//         todo!()
+//     }
+//
+//     fn read_i32_into(&mut self, dest: &mut [i32]) -> TsonResult<()> {
+//         todo!()
+//     }
+//
+//     fn read_u64_into(&mut self, dest: &mut [u64]) -> TsonResult<()> {
+//         todo!()
+//     }
+//
+//     fn read_i64_into(&mut self, dest: &mut [i64]) -> TsonResult<()> {
+//         todo!()
+//     }
+//
+//     fn read_f32_into(&mut self, dest: &mut [f32]) -> TsonResult<()> {
+//         todo!()
+//     }
+//
+//     fn read_f64_into(&mut self, dest: &mut [f64]) -> TsonResult<()> {
+//         todo!()
+//     }
+//
+//     fn read_string(&mut self) -> TsonResult<String> {
+//         todo!()
+//     }
+// }
+
 impl<T> Reader for T where T: Read {
-    fn read_all(&mut self, buf: &mut Vec<u8>) -> Result<()> {
+    fn read_all(&mut self, buf: &mut Vec<u8>) -> TsonResult<()> {
         let bytes = self.bytes();
         for byte in bytes {
             buf.push(byte?);
@@ -42,138 +135,148 @@ impl<T> Reader for T where T: Read {
         Ok(())
     }
 
-    fn read_u8(&mut self) -> Result<u8> {
-        match self.bytes().next() {
-            None => Err(TsonError::new("EOF")),
-            Some(v) => Ok(v?)
-        }
+    fn read_u8(&mut self) -> TsonResult<u8> {
+        let mut bytes = [0; 1];
+        self.read_exact(&mut bytes)?;
+        Ok(bytes[0])
     }
 
-    fn read_i8(&mut self) -> Result<i8> {
-        match self.bytes().next() {
-            None => Err(TsonError::new("EOF")),
-            Some(v) => Ok(v? as i8)
-        }
+    fn read_i8(&mut self) -> TsonResult<i8> {
+        let mut bytes = [0; 1];
+        self.read_exact(&mut bytes)?;
+        Ok(bytes[0] as i8)
     }
 
-    fn read_u16(&mut self) -> Result<u16> {
-        let mut bytes = [0;2];
+    fn read_u16(&mut self) -> TsonResult<u16> {
+        let mut bytes = [0; 2];
         self.read_exact(&mut bytes)?;
         Ok(LittleEndian::read_u16(&bytes))
     }
 
-    fn read_i16(&mut self) -> Result<i16> {
-        let mut bytes = [0;2];
+    fn read_i16(&mut self) -> TsonResult<i16> {
+        let mut bytes = [0; 2];
         self.read_exact(&mut bytes)?;
         Ok(LittleEndian::read_i16(&bytes))
     }
 
-    fn read_u32(&mut self) -> Result<u32> {
-        let mut bytes = [0;4];
+    fn read_u32(&mut self) -> TsonResult<u32> {
+        let mut bytes = [0; 4];
         self.read_exact(&mut bytes)?;
         Ok(LittleEndian::read_u32(&bytes))
     }
 
-    fn read_i32(&mut self) -> Result<i32> {
-        let mut bytes = [0;4];
+    fn read_i32(&mut self) -> TsonResult<i32> {
+        let mut bytes = [0; 4];
         self.read_exact(&mut bytes)?;
         Ok(LittleEndian::read_i32(&bytes))
     }
 
-    fn read_u64(&mut self) -> Result<u64> {
-        let mut bytes = [0;8];
+    fn read_u64(&mut self) -> TsonResult<u64> {
+        let mut bytes = [0; 8];
         self.read_exact(&mut bytes)?;
         Ok(LittleEndian::read_u64(&bytes))
     }
 
-    fn read_i64(&mut self) -> Result<i64> {
-        let mut bytes = [0;8];
+    fn read_i64(&mut self) -> TsonResult<i64> {
+        let mut bytes = [0; 8];
         self.read_exact(&mut bytes)?;
         Ok(LittleEndian::read_i64(&bytes))
     }
 
-    fn read_f32(&mut self) -> Result<f32> {
-        let mut bytes = [0;4];
+    fn read_f32(&mut self) -> TsonResult<f32> {
+        let mut bytes = [0; 4];
         self.read_exact(&mut bytes)?;
         Ok(LittleEndian::read_f32(&bytes))
     }
 
-    fn read_f64(&mut self) -> Result<f64> {
-        let mut bytes = [0;8];
+    fn read_f64(&mut self) -> TsonResult<f64> {
+        let mut bytes = [0; 8];
         self.read_exact(&mut bytes)?;
         Ok(LittleEndian::read_f64(&bytes))
     }
 
-    fn read_u8_into(&mut self, dest: &mut [u8]) -> Result<()> {
-        self.read_exact( dest)?;
+    fn read_u8_into(&mut self, dest: &mut [u8]) -> TsonResult<()> {
+        self.read_exact(dest)?;
         Ok(())
     }
 
-    fn read_i8_into(&mut self, dest: &mut [i8]) -> Result<()> {
-        let mut bytes = vec![0; dest.len() ];
-        self.read_exact(&mut bytes)?;
-        bytes.iter().zip(dest.iter_mut()).for_each(|(v, vv)| *vv = (*v) as i8);
+    fn read_i8_into(&mut self, dest: &mut [i8]) -> TsonResult<()> {
+        unsafe {
+            let dest_bytes = slice::from_raw_parts_mut(dest.as_mut_ptr() as *mut u8, dest.len());
+            self.read_exact(&mut (*dest_bytes))?;
+        }
         Ok(())
     }
 
-    fn read_u16_into(&mut self, dest: &mut [u16]) -> Result<()> {
-        let mut bytes = vec![0; dest.len()*2];
-        self.read_exact(&mut bytes)?;
-        LittleEndian::read_u16_into(&bytes, dest);
+    fn read_u16_into(&mut self, dest: &mut [u16]) -> TsonResult<()> {
+        unsafe {
+            let dest_bytes = slice::from_raw_parts_mut(dest.as_mut_ptr() as *mut u8, dest.len() * 2);
+            self.read_exact(&mut (*dest_bytes))?;
+        }
+        dest.iter_mut().for_each(|v| *v = v.to_le());
         Ok(())
     }
 
-    fn read_i16_into(&mut self, dest: &mut [i16]) -> Result<()> {
-        let mut bytes = vec![0; dest.len()*2];
-        self.read_exact(&mut bytes)?;
-        LittleEndian::read_i16_into(&bytes, dest);
+    fn read_i16_into(&mut self, dest: &mut [i16]) -> TsonResult<()> {
+        unsafe {
+            let dest_bytes = slice::from_raw_parts_mut(dest.as_mut_ptr() as *mut u8, dest.len() * 2);
+            self.read_exact(&mut (*dest_bytes))?;
+        }
+        dest.iter_mut().for_each(|v| *v = v.to_le());
         Ok(())
     }
 
-    fn read_u32_into(&mut self, dest: &mut [u32]) -> Result<()> {
-        let mut bytes = vec![0; dest.len()*4];
-        self.read_exact(&mut bytes)?;
-        LittleEndian::read_u32_into(&bytes, dest);
+    fn read_u32_into(&mut self, dest: &mut [u32]) -> TsonResult<()> {
+        unsafe {
+            let dest_bytes = slice::from_raw_parts_mut(dest.as_mut_ptr() as *mut u8, dest.len() * 4);
+            self.read_exact(&mut (*dest_bytes))?;
+        }
+        dest.iter_mut().for_each(|v| *v = v.to_le());
         Ok(())
     }
 
-    fn read_i32_into(&mut self, dest: &mut [i32]) -> Result<()> {
-        let mut bytes = vec![0; dest.len()*4];
-        self.read_exact(&mut bytes)?;
-        LittleEndian::read_i32_into(&bytes, dest);
+    fn read_i32_into(&mut self, dest: &mut [i32]) -> TsonResult<()> {
+        unsafe {
+            let dest_bytes = slice::from_raw_parts_mut(dest.as_mut_ptr() as *mut u8, dest.len() * 4);
+            self.read_exact(&mut (*dest_bytes))?;
+        }
+        dest.iter_mut().for_each(|v| *v = v.to_le());
         Ok(())
     }
 
-    fn read_u64_into(&mut self, dest: &mut [u64]) -> Result<()> {
-        let mut bytes = vec![0; dest.len()*8];
-        self.read_exact(&mut bytes)?;
-        LittleEndian::read_u64_into(&bytes, dest);
+    fn read_u64_into(&mut self, dest: &mut [u64]) -> TsonResult<()> {
+        unsafe {
+            let dest_bytes = slice::from_raw_parts_mut(dest.as_mut_ptr() as *mut u8, dest.len() * 8);
+            self.read_exact(&mut (*dest_bytes))?;
+        }
+        dest.iter_mut().for_each(|v| *v = v.to_le());
         Ok(())
     }
 
-    fn read_i64_into(&mut self, dest: &mut [i64]) -> Result<()> {
-        let mut bytes = vec![0; dest.len()*8];
-        self.read_exact(&mut bytes)?;
-        LittleEndian::read_i64_into(&bytes, dest);
+    fn read_i64_into(&mut self, dest: &mut [i64]) -> TsonResult<()> {
+        unsafe {
+            let dest_bytes = slice::from_raw_parts_mut(dest.as_mut_ptr() as *mut u8, dest.len() * 8);
+            self.read_exact(&mut (*dest_bytes))?;
+        }
+        dest.iter_mut().for_each(|v| *v = v.to_le());
         Ok(())
     }
 
-    fn read_f32_into(&mut self, dest: &mut [f32]) -> Result<()> {
-        let mut bytes = vec![0; dest.len()*4];
-        self.read_exact(&mut bytes)?;
-        LittleEndian::read_f32_into(&bytes, dest);
-        Ok(())
+    fn read_f32_into(&mut self, dest: &mut [f32]) -> TsonResult<()> {
+        let dst = unsafe {
+            slice::from_raw_parts_mut(dest.as_mut_ptr() as *mut u32, dest.len())
+        };
+        self.read_u32_into(dst)
     }
 
-    fn read_f64_into(&mut self, dest: &mut [f64]) -> Result<()> {
-        let mut bytes = vec![0; dest.len()*8];
-        self.read_exact(&mut bytes)?;
-        LittleEndian::read_f64_into(&bytes, dest);
-        Ok(())
+    fn read_f64_into(&mut self, dest: &mut [f64]) -> TsonResult<()> {
+        let dst = unsafe {
+            slice::from_raw_parts_mut(dest.as_mut_ptr() as *mut u64, dest.len())
+        };
+        self.read_u64_into(dst)
     }
 
-    fn read_string(&mut self) -> Result<String> {
-
+    fn read_string(&mut self) -> TsonResult<String> {
         let mut done = false;
         let mut vec = Vec::new();
         while !done {
@@ -186,11 +289,12 @@ impl<T> Reader for T where T: Read {
         }
 
         if let Ok(value) = String::from_utf8(vec) {
+            println!("Reader -- read_string -- {}", &value);
+
             Ok(value)
         } else {
             Err(TsonError::new("bad string"))
         }
-
     }
 }
 
@@ -268,7 +372,7 @@ pub struct Deserializer {}
 impl Deserializer {
     pub fn new() -> Deserializer { Deserializer {} }
 
-    pub fn read(&self, reader: &mut dyn Reader) -> Result<Value> {
+    pub fn read(&self, reader: &mut dyn Reader) -> TsonResult<Value> {
         let itype = self.read_type(reader)?;
 
         if itype != STRING_TYPE {
@@ -284,19 +388,19 @@ impl Deserializer {
         self.read_object(reader)
     }
 
-    fn read_type(&self, reader: &mut dyn Reader) -> Result<u8> {
+    fn read_type(&self, reader: &mut dyn Reader) -> TsonResult<u8> {
         reader.read_u8()
     }
 
-    fn read_len(&self, reader: &mut dyn Reader) -> Result<usize> {
+    fn read_len(&self, reader: &mut dyn Reader) -> TsonResult<usize> {
         Ok(reader.read_u32()? as usize)
     }
 
-    fn read_string(&self, reader: &mut dyn Reader) -> Result<String> {
+    fn read_string(&self, reader: &mut dyn Reader) -> TsonResult<String> {
         reader.read_string()
     }
 
-    fn read_object(&self, reader: &mut dyn Reader) -> Result<Value> {
+    pub fn read_object(&self, reader: &mut dyn Reader) -> TsonResult<Value> {
         let itype = self.read_type(reader)?;
         match itype {
             NULL_TYPE => Ok(Value::NULL),

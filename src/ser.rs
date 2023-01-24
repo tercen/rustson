@@ -7,62 +7,62 @@ use std::slice;
 //use std::mem::size_of;
 
 pub trait Writer {
-    fn add_u8(&mut self, value: u8) -> Result<()>;
-    fn add_i8(&mut self, value: i8) -> Result<()>;
-    fn add_u32(&mut self, value: u32) -> Result<()>;
-    fn add_i32(&mut self, value: i32) -> Result<()>;
-    fn add_f64(&mut self, value: f64) -> Result<()>;
-    fn add_u16(&mut self, value: u16) -> Result<()>;
-    fn add_i16(&mut self, value: i16) -> Result<()>;
-    fn add_u64(&mut self, value: u64) -> Result<()>;
-    fn add_i64(&mut self, value: i64) -> Result<()>;
-    fn add_f32(&mut self, value: f32) -> Result<()>;
-    fn put_slice(&mut self, src: &[u8]) -> Result<()>;
+    fn add_u8(&mut self, value: u8) -> TsonResult<()>;
+    fn add_i8(&mut self, value: i8) -> TsonResult<()>;
+    fn add_u32(&mut self, value: u32) -> TsonResult<()>;
+    fn add_i32(&mut self, value: i32) -> TsonResult<()>;
+    fn add_f64(&mut self, value: f64) -> TsonResult<()>;
+    fn add_u16(&mut self, value: u16) -> TsonResult<()>;
+    fn add_i16(&mut self, value: i16) -> TsonResult<()>;
+    fn add_u64(&mut self, value: u64) -> TsonResult<()>;
+    fn add_i64(&mut self, value: i64) -> TsonResult<()>;
+    fn add_f32(&mut self, value: f32) -> TsonResult<()>;
+    fn put_slice(&mut self, src: &[u8]) -> TsonResult<()>;
 }
 
 impl<T> Writer for T where T: BufMut {
-    fn add_u8(&mut self, value: u8) -> Result<()> {
+    fn add_u8(&mut self, value: u8) -> TsonResult<()> {
         self.put_u8(value);
         Ok(())
     }
-    fn add_i8(&mut self, value: i8) -> Result<()> {
+    fn add_i8(&mut self, value: i8) -> TsonResult<()> {
         self.put_i8(value);
         Ok(())
     }
-    fn add_u32(&mut self, value: u32) -> Result<()> {
+    fn add_u32(&mut self, value: u32) -> TsonResult<()> {
         self.put_u32_le(value);
         Ok(())
     }
-    fn add_i32(&mut self, value: i32) -> Result<()> {
+    fn add_i32(&mut self, value: i32) -> TsonResult<()> {
         self.put_i32_le(value);
         Ok(())
     }
-    fn add_f64(&mut self, value: f64) -> Result<()> {
+    fn add_f64(&mut self, value: f64) -> TsonResult<()> {
         self.put_f64_le(value);
         Ok(())
     }
-    fn add_u16(&mut self, value: u16) -> Result<()> {
+    fn add_u16(&mut self, value: u16) -> TsonResult<()> {
         self.put_u16_le(value);
         Ok(())
     }
-    fn add_i16(&mut self, value: i16) -> Result<()> {
+    fn add_i16(&mut self, value: i16) -> TsonResult<()> {
         self.put_i16_le(value);
         Ok(())
     }
-    fn add_u64(&mut self, value: u64) -> Result<()> {
+    fn add_u64(&mut self, value: u64) -> TsonResult<()> {
         self.put_u64_le(value);
         Ok(())
     }
-    fn add_i64(&mut self, value: i64) -> Result<()> {
+    fn add_i64(&mut self, value: i64) -> TsonResult<()> {
         self.put_i64_le(value);
         Ok(())
     }
-    fn add_f32(&mut self, value: f32) -> Result<()> {
+    fn add_f32(&mut self, value: f32) -> TsonResult<()> {
         self.put_f32_le(value);
         Ok(())
     }
 
-    fn put_slice(&mut self, value: &[u8]) -> Result<()> {
+    fn put_slice(&mut self, value: &[u8]) -> TsonResult<()> {
         self.put_slice(value);
         Ok(())
     }
@@ -79,48 +79,48 @@ impl CountWriter {
 }
 
 impl Writer for CountWriter {
-    fn add_u8(&mut self, _value: u8) -> Result<()> {
+    fn add_u8(&mut self, _value: u8) -> TsonResult<()> {
         self.size += 1;
         Ok(())
     }
-    fn add_i8(&mut self, _value: i8) -> Result<()> {
+    fn add_i8(&mut self, _value: i8) -> TsonResult<()> {
         self.size += 1;
         Ok(())
     }
-    fn add_u32(&mut self, _value: u32) -> Result<()> {
+    fn add_u32(&mut self, _value: u32) -> TsonResult<()> {
         self.size += 4;
         Ok(())
     }
-    fn add_i32(&mut self, _value: i32) -> Result<()> {
+    fn add_i32(&mut self, _value: i32) -> TsonResult<()> {
         self.size += 4;
         Ok(())
     }
-    fn add_f64(&mut self, _value: f64) -> Result<()> {
+    fn add_f64(&mut self, _value: f64) -> TsonResult<()> {
         self.size += 8;
         Ok(())
     }
-    fn add_u16(&mut self, _value: u16) -> Result<()> {
+    fn add_u16(&mut self, _value: u16) -> TsonResult<()> {
         self.size += 2;
         Ok(())
     }
-    fn add_i16(&mut self, _value: i16) -> Result<()> {
+    fn add_i16(&mut self, _value: i16) -> TsonResult<()> {
         self.size += 2;
         Ok(())
     }
-    fn add_u64(&mut self, _value: u64) -> Result<()> {
+    fn add_u64(&mut self, _value: u64) -> TsonResult<()> {
         self.size += 8;
         Ok(())
     }
-    fn add_i64(&mut self, _value: i64) -> Result<()> {
+    fn add_i64(&mut self, _value: i64) -> TsonResult<()> {
         self.size += 8;
         Ok(())
     }
-    fn add_f32(&mut self, _value: f32) -> Result<()> {
+    fn add_f32(&mut self, _value: f32) -> TsonResult<()> {
         self.size += 4;
         Ok(())
     }
 
-    fn put_slice(&mut self, src: &[u8]) -> Result<()> {
+    fn put_slice(&mut self, src: &[u8]) -> TsonResult<()> {
         self.size += src.len();
         Ok(())
     }
@@ -131,7 +131,7 @@ pub struct Serializer {}
 impl Serializer {
     pub fn new() -> Serializer { Serializer {} }
 
-    pub fn encoded_size(&self, value: &Value) -> Result<usize> {
+    pub fn encoded_size(&self, value: &Value) -> TsonResult<usize> {
         let mut buf = CountWriter::new();
         self.add_string(&mut buf, VERSION)?;
 
@@ -141,7 +141,7 @@ impl Serializer {
         }
     }
 
-    pub fn encode(&self, value: &Value) -> Result<Vec<u8>> {
+    pub fn encode(&self, value: &Value) -> TsonResult<Vec<u8>> {
         let size = self.encoded_size(value)?;
 
         let mut buf = Vec::with_capacity(size);
@@ -153,12 +153,12 @@ impl Serializer {
         }
     }
 
-    pub fn write(&self, value: &Value, writer: &mut dyn Writer) -> Result<()> {
+    pub fn write(&self, value: &Value, writer: &mut dyn Writer) -> TsonResult<()> {
         self.add_string(writer, VERSION)?;
         self.add_object(value, writer)
     }
 
-    fn add_object(&self, value: &Value, buf: &mut dyn Writer) -> Result<()> {
+    fn add_object(&self, value: &Value, buf: &mut dyn Writer) -> TsonResult<()> {
         match *value {
             Value::NULL => {
                 buf.add_u8(NULL_TYPE)?;
@@ -299,19 +299,19 @@ impl Serializer {
     }
 
 
-    fn add_len(&self, buf: &mut dyn Writer, len: usize) -> Result<()> {
+    fn add_len(&self, buf: &mut dyn Writer, len: usize) -> TsonResult<()> {
         if len > MAX_LIST_LENGTH {
             return Err(TsonError::new("list too large"));
         }
         buf.add_u32(len as u32)
     }
 
-    fn add_string(&self, buf: &mut dyn Writer, value: &str) -> Result<()> {
+    fn add_string(&self, buf: &mut dyn Writer, value: &str) -> TsonResult<()> {
         buf.add_u8(STRING_TYPE)?;
         self.add_cstring(buf, value)
     }
 
-    fn add_cstring(&self, buf: &mut dyn Writer, value: &str) -> Result<()> {
+    fn add_cstring(&self, buf: &mut dyn Writer, value: &str) -> TsonResult<()> {
         for byte in value.as_bytes().iter() {
             buf.add_u8(*byte)?;
         }

@@ -6,6 +6,7 @@ extern crate serde_json;
 pub mod deser;
 pub mod ser;
 pub mod spec;
+pub mod gdeser;
 
 use std::io::{Cursor, Error};
 use std::collections::HashMap;
@@ -23,7 +24,7 @@ use spec::*;
 
 pub static VERSION: &'static str = "1.1.0";
 
-pub type Result<T> = std::result::Result<T, TsonError>;
+pub type TsonResult<T> = std::result::Result<T, TsonError>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TsonError {
@@ -75,7 +76,7 @@ impl StrVec {
     pub fn from_bytes(bytes: Vec<u8>) -> Self {
         StrVec { bytes }
     }
-    pub fn build_starts(&self) -> Result<Vec<usize>> {
+    pub fn build_starts(&self) -> TsonResult<Vec<usize>> {
         let mut reader = Cursor::new(&self.bytes);
         let mut len_in_bytes = self.bytes.len();
         let mut vec = Vec::new();
@@ -96,7 +97,7 @@ impl StrVec {
         Ok(vec)
     }
 
-    pub fn try_to_vec(&self) -> Result<Vec<String>> {
+    pub fn try_to_vec(&self) -> TsonResult<Vec<String>> {
         let mut reader = Cursor::new(&self.bytes);
         let mut len_in_bytes = self.bytes.len();
         let mut vec = Vec::new();
@@ -109,7 +110,7 @@ impl StrVec {
     }
 }
 
-fn read_string(reader: &mut dyn Reader) -> Result<String> {
+fn read_string(reader: &mut dyn Reader) -> TsonResult<String> {
     let mut done = false;
     let mut vec = Vec::new();
     while !done {
@@ -131,7 +132,7 @@ fn read_string(reader: &mut dyn Reader) -> Result<String> {
 impl TryInto<Vec<String>> for StrVec {
     type Error = TsonError;
 
-    fn try_into(self) -> Result<Vec<String>> {
+    fn try_into(self) -> TsonResult<Vec<String>> {
         let mut reader = Cursor::new(&self.bytes);
         let mut len_in_bytes = self.bytes.len();
         let mut vec = Vec::new();
@@ -187,11 +188,11 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn to_bytes(&self) -> Result<Vec<u8>> {
+    pub fn to_bytes(&self) -> TsonResult<Vec<u8>> {
         encode(self)
     }
 
-    pub fn to_str(&self) -> Result<&str> {
+    pub fn to_str(&self) -> TsonResult<&str> {
         match *self {
             Value::STR(ref v) => {
                 Ok(v.as_str())
@@ -200,7 +201,7 @@ impl Value {
         }
     }
 
-    pub fn to_map(&self) -> Result<&HashMap<String, Value>> {
+    pub fn to_map(&self) -> TsonResult<&HashMap<String, Value>> {
         match *self {
             Value::MAP(ref v) => {
                 Ok(v)
@@ -209,7 +210,7 @@ impl Value {
         }
     }
 
-    pub fn to_list(&self) -> Result<&Vec<Value>> {
+    pub fn to_list(&self) -> TsonResult<&Vec<Value>> {
         match *self {
             Value::LST(ref v) => {
                 Ok(v)
@@ -219,25 +220,25 @@ impl Value {
     }
 }
 
-pub fn encode_json(value: &Value) -> Result<String> {
+pub fn encode_json(value: &Value) -> TsonResult<String> {
     serde_json::to_string(&value).map_err(|e| TsonError::new(format!("encode_json  : failed with {}", e)))
 }
 
-pub fn decode_json(v: &[u8]) -> Result<Value> {
+pub fn decode_json(v: &[u8]) -> TsonResult<Value> {
     serde_json::from_slice(v).map_err(|e| TsonError::new(format!("decode_json : failed with {}", e)))
 }
 
-pub fn encode(value: &Value) -> Result<Vec<u8>> {
+pub fn encode(value: &Value) -> TsonResult<Vec<u8>> {
     let ser = Serializer::new();
     ser.encode(value)
 }
 
-pub fn decode(mut cur: Cursor<&[u8]>) -> Result<Value> {
+pub fn decode(mut cur: Cursor<&[u8]>) -> TsonResult<Value> {
     let deser = Deserializer::new();
     deser.read(&mut cur)
 }
 
-pub fn decode_bytes(bytes: &[u8]) -> Result<Value> {
+pub fn decode_bytes(bytes: &[u8]) -> TsonResult<Value> {
     let deser = Deserializer::new();
     let mut cur = Cursor::new(&bytes);
     deser.read(&mut cur)
