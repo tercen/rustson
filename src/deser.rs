@@ -204,75 +204,6 @@ impl<T> Reader for T where T: Read {
     }
 }
 
-// impl<T> Reader for T where T: Buf {
-//     fn read_all(&mut self, buf: &mut Vec<u8>) -> Result<()>{
-//         buf.extend(self.iter());
-//         Ok(())
-//     }
-//
-//     fn read_u8(&mut self) -> Result<u8> {
-//         if self.remaining() < 1 {
-//             return Err(TsonError::new("EOF"));
-//         }
-//         Ok(self.get_u8())
-//     }
-//     fn read_i8(&mut self) -> Result<i8>{
-//         if self.remaining() < 1 {
-//             return Err(TsonError::new("EOF"));
-//         }
-//         Ok(self.get_i8())
-//     }
-//     fn read_u16(&mut self) -> Result<u16>{
-//         if self.remaining() < 2 {
-//             return Err(TsonError::new("EOF"));
-//         }
-//         Ok(self.get_u16_le())
-//     }
-//     fn read_i16(&mut self) -> Result<i16>{
-//         if self.remaining() < 2 {
-//             return Err(TsonError::new("EOF"));
-//         }
-//         Ok(self.get_i16_le())
-//     }
-//     fn read_u32(&mut self) -> Result<u32>{
-//         if self.remaining() < 4 {
-//             return Err(TsonError::new("EOF"));
-//         }
-//         Ok(self.get_u32_le())
-//     }
-//     fn read_i32(&mut self) -> Result<i32>{
-//         if self.remaining() < 4 {
-//             return Err(TsonError::new("EOF"));
-//         }
-//         Ok(self.get_i32_le())
-//     }
-//     fn read_u64(&mut self) -> Result<u64>{
-//         if self.remaining() < 8 {
-//             return Err(TsonError::new("EOF"));
-//         }
-//         Ok(self.get_u64_le())
-//     }
-//     fn read_i64(&mut self) -> Result<i64>{
-//         if self.remaining() < 8 {
-//             return Err(TsonError::new("EOF"));
-//         }
-//         Ok(self.get_i64_le())
-//     }
-//     fn read_f32(&mut self) -> Result<f32>{
-//         if self.remaining() < 4 {
-//             return Err(TsonError::new("EOF"));
-//         }
-//         Ok(self.get_f32_le())
-//     }
-//     fn read_f64(&mut self) -> Result<f64>{
-//         if self.remaining() < 8 {
-//             return Err(TsonError::new("EOF"));
-//         }
-//         Ok(self.get_f64_le())
-//     }
-// }
-
-
 pub struct Deserializer {}
 
 impl Deserializer {
@@ -403,19 +334,9 @@ impl Deserializer {
             }
             LIST_STRING_TYPE => {
                 let mut len_in_bytes = self.read_len(reader)?;
-
-                let mut vec = Vec::new();
-                while len_in_bytes > 0 {
-                    let v = self.read_string(reader)?;
-                    len_in_bytes -= v.as_bytes().len() + 1;
-                    vec.push(v);
-                }
-
-                if len_in_bytes > 0 {
-                    return Err(TsonError::new("LIST_STRING_TYPE -- wrong format"));
-                }
-
-                Ok(Value::LSTSTR(vec.into()))
+                let mut bytes = vec![0;len_in_bytes];
+                reader.read_u8_into(&mut bytes)?;
+                Ok(Value::LSTSTR(StrVec::from_bytes(bytes)))
             }
 
             _ => Err(TsonError::new("wrong format -- _")),
