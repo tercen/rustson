@@ -30,6 +30,7 @@ pub trait Reader {
     fn read_f64_into(&mut self, dest: &mut [f64]) -> TsonResult<()>;
 
     fn read_string(&mut self) -> TsonResult<String>;
+    fn read_string_lossy(&mut self) -> TsonResult<String>;
 }
 
 
@@ -202,12 +203,29 @@ impl<T> Reader for T where T: Read {
             Err(TsonError::new("bad string"))
         }
     }
+
+    fn read_string_lossy(&mut self) -> TsonResult<String> {
+        let mut done = false;
+        let mut vec = Vec::new();
+        while !done {
+            let byte = self.read_u8()?;
+            if byte == 0 {
+                done = true;
+            } else {
+                vec.push(byte);
+            }
+        }
+
+        Ok(String::from_utf8_lossy(&vec).to_string())
+    }
 }
 
-pub struct Deserializer {}
+pub struct Deserializer {
+    lossy_utf8: bool,
+}
 
 impl Deserializer {
-    pub fn new() -> Deserializer { Deserializer {} }
+    pub fn new(lossy_utf8: bool) -> Deserializer { Deserializer {lossy_utf8} }
 
     pub fn read(&self, reader: &mut dyn Reader) -> TsonResult<Value> {
         let itype = self.read_type(reader)?;
@@ -234,7 +252,11 @@ impl Deserializer {
     }
 
     fn read_string(&self, reader: &mut dyn Reader) -> TsonResult<String> {
-        reader.read_string()
+        if self.lossy_utf8 {
+            reader.read_string_lossy()
+        } else {
+            reader.read_string()
+        }
     }
 
     pub fn read_object(&self, reader: &mut dyn Reader) -> TsonResult<Value> {
@@ -336,7 +358,11 @@ impl Deserializer {
                 let mut len_in_bytes = self.read_len(reader)?;
                 let mut bytes = vec![0;len_in_bytes];
                 reader.read_u8_into(&mut bytes)?;
-                Ok(Value::LSTSTR(StrVec::from_bytes(bytes)))
+                if self.lossy_utf8 {
+                    Ok(Value::LSTSTR(StrVec::from_bytes_lossy(bytes)?))
+                } else {
+                    Ok(Value::LSTSTR(StrVec::from_bytes(bytes)?))
+                }
             }
 
             _ => Err(TsonError::new("wrong format -- _")),

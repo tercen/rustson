@@ -5,7 +5,8 @@ use ::{LIST_TYPE, Value};
 use Deserializer;
 
 pub struct TsonGDeserializer {
-    reader: Box<dyn Reader>
+    reader: Box<dyn Reader>,
+    lossy_utf8: bool,
 }
 
 pub struct TsonMapDeser<'a> {
@@ -31,7 +32,7 @@ pub struct TsonTypedListDeser<'a> {
 
 impl<'a> TsonGDeserializer {
 
-    pub fn new(mut reader: Box<dyn Reader>) -> TsonResult<Self> {
+    pub fn new(lossy_utf8: bool, mut reader: Box<dyn Reader>) -> TsonResult<Self> {
         let itype = reader.read_u8()?;
 
         if itype != STRING_TYPE {
@@ -44,7 +45,7 @@ impl<'a> TsonGDeserializer {
             return Err(TsonError::new("wrong version"));
         }
 
-        Ok(TsonGDeserializer {reader})
+        Ok(TsonGDeserializer {reader, lossy_utf8})
     }
 
     pub fn read_type(&mut self) -> TsonResult<u8> {
@@ -55,9 +56,17 @@ impl<'a> TsonGDeserializer {
         Ok(self.reader.read_u32()? as usize)
     }
 
+    fn read_string(&mut self) -> TsonResult<String> {
+        if self.lossy_utf8 {
+            self.reader.read_string_lossy()
+        } else {
+            self.reader.read_string()
+        }
+    }
+
     pub fn next_string(&mut self) -> TsonResult<String> {
         if self.read_type()? == STRING_TYPE {
-            self.reader.read_string()
+            self.read_string()
         } else {
             Err(TsonError::new("TsonDeser -- bad type -- String expected"))
         }
@@ -82,7 +91,7 @@ impl<'a> TsonGDeserializer {
     }
 
     pub fn next_value(&mut self) -> TsonResult<Value> {
-        Deserializer::new().read_object(self.reader.as_mut())
+        Deserializer::new(self.lossy_utf8).read_object(self.reader.as_mut())
     }
 }
 
@@ -188,12 +197,11 @@ mod tests {
         let bytes = encode(&Value::MAP(map)).unwrap();
         let mut reader = Box::new(Cursor::new(bytes));
 
-        let mut deser = TsonGDeserializer::new(reader)?;
+        let mut deser = TsonGDeserializer::new(true,reader)?;
 
         let mut deser_map = deser.next_map()?;
 
         assert_eq!(deser_map.len(), 2);
-
 
         fn check_key_value(key_value: &mut TsonMapEntryDeser) -> TsonResult<()> {
             if &key_value.key == "name" {
@@ -226,7 +234,7 @@ mod tests {
 
         let bytes = encode(&Value::LST(vec![Value::MAP(map1), Value::MAP(map2)])).unwrap();
         let mut reader = Box::new(Cursor::new(bytes));
-        let mut deser = TsonGDeserializer::new(reader)?;
+        let mut deser = TsonGDeserializer::new(false,reader)?;
 
         let mut deser_list = deser.next_list()?;
 

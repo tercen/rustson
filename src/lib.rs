@@ -74,9 +74,53 @@ pub struct StrVec {
 }
 
 impl StrVec {
-    pub fn from_bytes(bytes: Vec<u8>) -> Self {
+    pub fn from_bytes(bytes: Vec<u8>) -> TsonResult<Self> {
+        if Self::is_valid_utf8(&bytes)? {
+            Ok(Self::from_bytes_unchecked(bytes))
+        } else {
+            Err(TsonError::new("StrVec -- from_bytes -- not valid utf8"))
+        }
+    }
+
+    pub fn from_bytes_unchecked(bytes: Vec<u8>) -> Self {
         StrVec { bytes }
     }
+
+    pub fn from_bytes_lossy(bytes: Vec<u8>) -> TsonResult<Self> {
+        if Self::is_valid_utf8(&bytes)? {
+            Ok(Self::from_bytes_unchecked(bytes))
+        } else {
+            let mut len_in_bytes = bytes.len();
+            let mut reader = Cursor::new(&bytes);
+
+            let mut start = 0;
+            let mut result = Vec::with_capacity(bytes.len());
+
+            while start < len_in_bytes {
+                let len = read_string_len(&mut reader)?;
+                let value = String::from_utf8_lossy(&bytes[start..(start+len)]);
+                result.extend_from_slice(value.as_bytes());
+                start += len + 1;
+            }
+            Ok(Self::from_bytes_unchecked(result))
+        }
+    }
+
+    pub fn is_valid_utf8(bytes: &[u8]) -> TsonResult<bool>  {
+        let mut reader = Cursor::new(bytes);
+        let mut len_in_bytes = bytes.len();
+        let mut start = 0;
+
+        while start < len_in_bytes {
+            let len = read_string_len(&mut reader)?;
+            if core::str::from_utf8(&bytes[start..(start+len)]).is_err() {
+                return Ok(false);
+            }
+            start += len + 1;
+        }
+        Ok(true)
+    }
+
     pub fn build_starts(&self) -> TsonResult<Vec<usize>> {
         let mut reader = Cursor::new(&self.bytes);
         let mut len_in_bytes = self.bytes.len();
@@ -248,12 +292,12 @@ pub fn encode(value: &Value) -> TsonResult<Vec<u8>> {
 }
 
 pub fn decode(mut cur: Cursor<&[u8]>) -> TsonResult<Value> {
-    let deser = Deserializer::new();
+    let deser = Deserializer::new(false);
     deser.read(&mut cur)
 }
 
 pub fn decode_bytes(bytes: &[u8]) -> TsonResult<Value> {
-    let deser = Deserializer::new();
+    let deser = Deserializer::new(false);
     let mut cur = Cursor::new(&bytes);
     deser.read(&mut cur)
 }
