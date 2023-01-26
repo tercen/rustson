@@ -80,21 +80,18 @@ impl StrVec {
     pub fn build_starts(&self) -> TsonResult<Vec<usize>> {
         let mut reader = Cursor::new(&self.bytes);
         let mut len_in_bytes = self.bytes.len();
-        let mut vec = Vec::new();
+        let mut vec = Vec::with_capacity(len_in_bytes);
 
         let mut start = 0usize;
         vec.push(start);
 
         while len_in_bytes > 0 {
-            let v = read_string(&mut reader)?;
-            let len = v.as_bytes().len();
-
+            let len = read_string_len(&mut reader)?;
             start += len + 1;
             vec.push(start);
-
             len_in_bytes -= len + 1;
         }
-
+        vec.shrink_to_fit();
         Ok(vec)
     }
 
@@ -129,6 +126,22 @@ fn read_string(reader: &mut dyn Reader) -> TsonResult<String> {
         Err(TsonError::new("utf8 : bad string"))
     }
 }
+
+fn read_string_len(reader: &mut dyn Reader) -> TsonResult<usize> {
+    let mut done = false;
+    let mut len = 0;
+    while !done {
+        let byte = reader.read_u8()?;
+        if byte == 0 {
+            done = true;
+        } else {
+            len += 1;
+        }
+    }
+
+    Ok(len)
+}
+
 
 impl TryInto<Vec<String>> for StrVec {
     type Error = TsonError;
